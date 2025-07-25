@@ -6,11 +6,13 @@
     <title>Avisos Meteorológicos IPMA</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        /* Estilos Base */
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
             background-color: #f4f4f4;
             color: #333;
+            transition: background-color 0.3s, color 0.3s; /* Transição suave para o tema */
         }
         .container {
             background-color: #fff;
@@ -76,62 +78,160 @@
             margin-right: 8px; /* Espaço entre o ícone e o texto */
             color: #555; /* Cor padrão para os ícones */
         }
+        /* Botão de Tema */
+        #themeToggle {
+            background-color: #0056b3;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            position: absolute; /* Posição absoluta para fixar */
+            top: 20px;
+            right: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        #themeToggle:hover {
+            background-color: #004080;
+        }
+        /* Ajuste para o botão em ecrãs pequenos */
+        @media (max-width: 768px) {
+            #themeToggle {
+                position: static; /* Volta para posição normal */
+                margin-bottom: 20px;
+                display: block; /* Ocupa a largura total */
+                width: calc(100% - 40px); /* Ajuste para preenchimento */
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .container {
+                padding-top: 20px; /* Espaço para o botão se estiver acima */
+            }
+        }
+
+        /* --- Estilos do Tema Escuro --- */
+        body.dark-mode {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        body.dark-mode .container {
+            background-color: #2b2b2b;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+        body.dark-mode h1,
+        body.dark-mode h2 {
+            color: #90CAF9; /* Um azul mais claro para o dark mode */
+        }
+        body.dark-mode h2 {
+            border-bottom-color: #444;
+        }
+        body.dark-mode table {
+            border-color: #555;
+        }
+        body.dark-mode th,
+        body.dark-mode td {
+            border-color: #555;
+        }
+        body.dark-mode th {
+            background-color: #3a3a3a;
+            color: #f0f0f0;
+        }
+        body.dark-mode .loading-message,
+        body.dark-mode .no-warnings {
+            color: #b0b0b0;
+        }
+        body.dark-mode .awareness-icon {
+            color: #e0e0e0; /* Ícones mais claros no tema escuro */
+        }
+        body.dark-mode #themeToggle {
+            background-color: #4CAF50; /* Verde para tema escuro */
+            color: #fff;
+        }
+        body.dark-mode #themeToggle:hover {
+            background-color: #45a049;
+        }
+
+        /* --- Responsividade das Tabelas --- */
+        /* Para ecrãs pequenos, as tabelas podem rolar horizontalmente */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch; /* Suaviza o scroll em iOS */
+        }
+        /* Aplica o overflow-x apenas em ecrãs pequenos */
+        @media (max-width: 768px) {
+            table {
+                display: block; /* Permite a tabela ser rolada */
+                width: max-content; /* Ocupa o conteúdo mínimo necessário */
+            }
+            /* Opcional: Ajustar largura de colunas para melhor visualização em mobile */
+            /* th:nth-child(1), td:nth-child(1) { min-width: 120px; } */ /* Área */
+            /* th:nth-child(4), td:nth-child(4) { min-width: 250px; } */ /* Descrição */
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <button id="themeToggle">Alternar Tema</button>
         <h1>Avisos Meteorológicos IPMA</h1>
         <div id="loading" class="loading-message">A carregar dados dos avisos...</div>
         <div id="errorMessage" class="loading-message" style="display: none; color: red;">Não foi possível carregar os dados dos avisos. Tente novamente mais tarde.</div>
         
         <div id="warningsContent" style="display: none;">
             <h2>Continente</h2>
-            <table id="continentTable">
-                <thead>
-                    <tr>
-                        <th>Área</th>
-                        <th>Tipo de Aviso</th>
-                        <th>Nível de Alerta</th>
-                        <th>Descrição</th>
-                        <th>Início</th>
-                        <th>Fim</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    </tbody>
-            </table>
+            <div class="table-responsive">
+                <table id="continentTable">
+                    <thead>
+                        <tr>
+                            <th>Área</th>
+                            <th>Tipo de Aviso</th>
+                            <th>Nível de Alerta</th>
+                            <th>Descrição</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
 
             <h2>Açores</h2>
-            <table id="azoresTable">
-                <thead>
-                    <tr>
-                        <th>Área</th>
-                        <th>Tipo de Aviso</th>
-                        <th>Nível de Alerta</th>
-                        <th>Descrição</th>
-                        <th>Início</th>
-                        <th>Fim</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    </tbody>
-            </table>
+            <div class="table-responsive">
+                <table id="azoresTable">
+                    <thead>
+                        <tr>
+                            <th>Área</th>
+                            <th>Tipo de Aviso</th>
+                            <th>Nível de Alerta</th>
+                            <th>Descrição</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
 
             <h2>Madeira</h2>
-            <table id="madeiraTable">
-                <thead>
-                    <tr>
-                        <th>Área</th>
-                        <th>Tipo de Aviso</th>
-                        <th>Nível de Alerta</th>
-                        <th>Descrição</th>
-                        <th>Início</th>
-                        <th>Fim</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    </tbody>
-            </table>
+            <div class="table-responsive">
+                <table id="madeiraTable">
+                    <thead>
+                        <tr>
+                            <th>Área</th>
+                            <th>Tipo de Aviso</th>
+                            <th>Nível de Alerta</th>
+                            <th>Descrição</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -144,6 +244,7 @@
         const continentTableBody = document.querySelector('#continentTable tbody');
         const azoresTableBody = document.querySelector('#azoresTable tbody');
         const madeiraTableBody = document.querySelector('#madeiraTable tbody');
+        const themeToggle = document.getElementById('themeToggle'); // Referência ao botão de tema
 
         // Objeto para mapear os códigos de área para os nomes dos distritos/regiões E a sua região.
         const areaInfo = {
@@ -190,11 +291,17 @@
             "Agitação Marítima": "fa-solid fa-water",
             "Trovoada": "fa-solid fa-bolt",
             "Nevoeiro": "fa-solid fa-smog",
-            "Radiação UV": "fa-solid fa-sun", // Para UV
+            "Radiação UV": "fa-solid fa-sun",
             "Gelo": "fa-solid fa-icicles",
-            "Queda de Neve": "fa-solid fa-snowflake", // Pode ser mais específico que "Neve"
-            "Precipitação": "fa-solid fa-cloud-rain", // Mais genérico para chuva/aguaceiros
+            "Queda de Neve": "fa-solid fa-snowflake",
+            "Precipitação": "fa-solid fa-cloud-rain",
             "Vento Forte": "fa-solid fa-wind",
+            "Temperatura Mínima": "fa-solid fa-temperature-low",
+            "Temperatura Máxima": "fa-solid fa-temperature-high",
+            "Descida de Temperatura": "fa-solid fa-temperature-arrow-down",
+            "Subida de Temperatura": "fa-solid fa-temperature-arrow-up",
+            "Perigo de Incêndio Rural": "fa-solid fa-fire",
+            "Geada": "fa-solid fa-ice",
             // Adicione mais tipos de aviso e ícones conforme necessário
         };
 
@@ -240,7 +347,6 @@
             const areaCode = warning.idAreaAviso;
             const areaName = areaInfo[areaCode] ? areaInfo[areaCode].name : areaCode || 'N/A';
 
-            // Prepara o texto do tipo de aviso com o ícone, se disponível
             let awarenessTypeText = warning.awarenessTypeName || 'N/A';
             const iconClass = awarenessTypeIcons[awarenessTypeText];
             if (iconClass) {
@@ -248,7 +354,7 @@
             }
 
             row.insertCell().textContent = areaName;
-            row.insertCell().innerHTML = awarenessTypeText; // Usa innerHTML para renderizar o ícone
+            row.insertCell().innerHTML = awarenessTypeText; 
             row.insertCell().innerHTML = `<span class="alert-level ${alertColorClass}">${translatedAlertLevel}</span>`;
             row.insertCell().textContent = warning.text || 'N/A';
             row.insertCell().textContent = formatDateTime(warning.startTime);
@@ -338,7 +444,41 @@
             }
         }
 
-        fetchWarnings();
+        // --- Lógica do Tema Escuro ---
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.body.classList.add('dark-mode');
+                themeToggle.textContent = 'Tema Claro';
+            } else {
+                document.body.classList.remove('dark-mode');
+                themeToggle.textContent = 'Tema Escuro';
+            }
+        }
+
+        // Carrega o tema guardado ou deteta a preferência do sistema
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            applyTheme(savedTheme);
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            // Se o utilizador tem preferência por tema escuro no sistema e não há tema guardado
+            applyTheme('dark');
+        } else {
+            applyTheme('light'); // Tema padrão se não houver preferência
+        }
+
+        // Event listener para o botão de alternar tema
+        themeToggle.addEventListener('click', () => {
+            if (document.body.classList.contains('dark-mode')) {
+                applyTheme('light');
+                localStorage.setItem('theme', 'light');
+            } else {
+                applyTheme('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        });
+        // --- Fim da Lógica do Tema Escuro ---
+
+        fetchWarnings(); // Executa a função uma vez ao carregar a página
         setInterval(fetchWarnings, 300000); // Atualiza a cada 5 minutos
     </script>
 </body>
