@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aviso Meteorológico IPMA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            margin: auto;
+        }
+        h1 {
+            color: #0056b3;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            color: #555;
+        }
+        .alert-row .alert-level {
+            font-weight: bold;
+            color: #fff; /* Cor do texto dentro da célula de cor de alerta */
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        /* Cores dos alertas */
+        .alert-yellow { background-color: #f0c20c; } /* Amarelo */
+        .alert-orange { background-color: #f5870a; } /* Laranja */
+        .alert-red { background-color: #e02b2b; }    /* Vermelho */
+        .alert-green { background-color: #4CAF50; }    /* Verde (se aplicável) */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Aviso Meteorológico IPMA</h1>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Campo</th>
+                    <th>Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>**Descrição**</td>
+                    <td>Persistência de valores elevados da temperatura máxima.</td>
+                </tr>
+                <tr>
+                    <td>**Tipo de Aviso**</td>
+                    <td>Tempo Quente</td>
+                </tr>
+                <tr>
+                    <td>**Área Afetada**</td>
+                    <td>BGC (Bragança)</td>
+                </tr>
+                <tr>
+                    <td>**Início**</td>
+                    <td>26 de julho de 2025, 09:00:00</td>
+                </tr>
+                <tr>
+                    <td>**Fim**</td>
+                    <td>28 de julho de 2025, 00:00:00</td>
+                </tr>
+                <tr class="alert-row">
+                    <td>**Nível de Alerta**</td>
+                    <td><span class="alert-level alert-yellow">Amarelo</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
