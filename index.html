@@ -165,6 +165,9 @@
                 display: block; /* Permite a tabela ser rolada */
                 width: max-content; /* Ocupa o conteúdo mínimo necessário */
             }
+            /* Opcional: Ajustar largura de colunas para melhor visualização em mobile */
+            /* th:nth-child(1), td:nth-child(1) { min-width: 120px; } */ /* Área */
+            /* th:nth-child(4), td:nth-child(4) { min-width: 250px; } */ /* Descrição */
         }
     </style>
 </head>
@@ -241,7 +244,7 @@
         const continentTableBody = document.querySelector('#continentTable tbody');
         const azoresTableBody = document.querySelector('#azoresTable tbody');
         const madeiraTableBody = document.querySelector('#madeiraTable tbody');
-        const themeToggle = document.getElementById('themeToggle'); 
+        const themeToggle = document.getElementById('themeToggle'); // Referência ao botão de tema
 
         // Objeto para mapear os códigos de área para os nomes dos distritos/regiões E a sua região.
         const areaInfo = {
@@ -299,7 +302,6 @@
             "Subida de Temperatura": "fa-solid fa-temperature-arrow-up",
             "Perigo de Incêndio Rural": "fa-solid fa-fire",
             "Geada": "fa-solid fa-ice",
-            "Tempo Frio": "fa-solid fa-temperature-low",
             // Adicione mais tipos de aviso e ícones conforme necessário
         };
 
@@ -376,10 +378,6 @@
                 }
                 const data = await response.json();
                 
-                // --- LINHA DE DEPURÇÃO ADICIONADA AQUI ---
-                console.log('Dados recebidos da API:', data); 
-                // --- FIM DA LINHA DE DEPURÇÃO ---
-
                 if (Array.isArray(data)) { 
                     const warnings = data;
 
@@ -462,9 +460,4 @@
         if (savedTheme) {
             applyTheme(savedTheme);
         } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            applyTheme('dark');
-        } else {
-            applyTheme('light'); 
-        }
-
-        // Event listener para o botão de alternar
+            // Se o utilizador tem preferência por tema escuro no sistema e não há te
