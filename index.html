@@ -165,9 +165,6 @@
                 display: block; /* Permite a tabela ser rolada */
                 width: max-content; /* Ocupa o conteúdo mínimo necessário */
             }
-            /* Opcional: Ajustar largura de colunas para melhor visualização em mobile */
-            /* th:nth-child(1), td:nth-child(1) { min-width: 120px; } */ /* Área */
-            /* th:nth-child(4), td:nth-child(4) { min-width: 250px; } */ /* Descrição */
         }
     </style>
 </head>
@@ -244,7 +241,7 @@
         const continentTableBody = document.querySelector('#continentTable tbody');
         const azoresTableBody = document.querySelector('#azoresTable tbody');
         const madeiraTableBody = document.querySelector('#madeiraTable tbody');
-        const themeToggle = document.getElementById('themeToggle'); // Referência ao botão de tema
+        const themeToggle = document.getElementById('themeToggle'); 
 
         // Objeto para mapear os códigos de área para os nomes dos distritos/regiões E a sua região.
         const areaInfo = {
@@ -302,6 +299,7 @@
             "Subida de Temperatura": "fa-solid fa-temperature-arrow-up",
             "Perigo de Incêndio Rural": "fa-solid fa-fire",
             "Geada": "fa-solid fa-ice",
+            "Tempo Frio": "fa-solid fa-temperature-low", // Ícone para tempo frio
             // Adicione mais tipos de aviso e ícones conforme necessário
         };
 
@@ -467,19 +465,4 @@
         }
 
         // Event listener para o botão de alternar tema
-        themeToggle.addEventListener('click', () => {
-            if (document.body.classList.contains('dark-mode')) {
-                applyTheme('light');
-                localStorage.setItem('theme', 'light');
-            } else {
-                applyTheme('dark');
-                localStorage.setItem('theme', 'dark');
-            }
-        });
-        // --- Fim da Lógica do Tema Escuro ---
-
-        fetchWarnings(); // Executa a função uma vez ao carregar a página
-        setInterval(fetchWarnings, 300000); // Atualiza a cada 5 minutos
-    </script>
-</body>
-</html>
+        t
