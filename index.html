@@ -299,7 +299,7 @@
             "Subida de Temperatura": "fa-solid fa-temperature-arrow-up",
             "Perigo de Incêndio Rural": "fa-solid fa-fire",
             "Geada": "fa-solid fa-ice",
-            "Tempo Frio": "fa-solid fa-temperature-low", // Ícone para tempo frio
+            "Tempo Frio": "fa-solid fa-temperature-low",
             // Adicione mais tipos de aviso e ícones conforme necessário
         };
 
@@ -376,6 +376,10 @@
                 }
                 const data = await response.json();
                 
+                // --- LINHA DE DEPURÇÃO ADICIONADA AQUI ---
+                console.log('Dados recebidos da API:', data); 
+                // --- FIM DA LINHA DE DEPURÇÃO ---
+
                 if (Array.isArray(data)) { 
                     const warnings = data;
 
@@ -458,11 +462,9 @@
         if (savedTheme) {
             applyTheme(savedTheme);
         } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            // Se o utilizador tem preferência por tema escuro no sistema e não há tema guardado
             applyTheme('dark');
         } else {
-            applyTheme('light'); // Tema padrão se não houver preferência
+            applyTheme('light'); 
         }
 
-        // Event listener para o botão de alternar tema
-        t
+        // Event listener para o botão de alternar
