@@ -24,6 +24,12 @@
             text-align: center;
             margin-bottom: 30px;
         }
+        h2 {
+            color: #0056b3;
+            margin-top: 40px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -58,85 +64,125 @@
             color: #666;
             padding: 20px;
         }
+        .no-warnings {
+            text-align: center;
+            padding: 15px;
+            color: #666;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Avisos Meteorológicos IPMA</h1>
         <div id="loading" class="loading-message">A carregar dados dos avisos...</div>
-        <table id="warningsTable" style="display: none;">
-            <thead>
-                <tr>
-                    <th>Área</th>
-                    <th>Tipo de Aviso</th>
-                    <th>Nível de Alerta</th>
-                    <th>Descrição</th>
-                    <th>Início</th>
-                    <th>Fim</th>
-                </tr>
-            </thead>
-            <tbody>
-                </tbody>
-        </table>
         <div id="errorMessage" class="loading-message" style="display: none; color: red;">Não foi possível carregar os dados dos avisos. Tente novamente mais tarde.</div>
+        
+        <div id="warningsContent" style="display: none;">
+            <h2>Continente</h2>
+            <table id="continentTable">
+                <thead>
+                    <tr>
+                        <th>Área</th>
+                        <th>Tipo de Aviso</th>
+                        <th>Nível de Alerta</th>
+                        <th>Descrição</th>
+                        <th>Início</th>
+                        <th>Fim</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+
+            <h2>Açores</h2>
+            <table id="azoresTable">
+                <thead>
+                    <tr>
+                        <th>Área</th>
+                        <th>Tipo de Aviso</th>
+                        <th>Nível de Alerta</th>
+                        <th>Descrição</th>
+                        <th>Início</th>
+                        <th>Fim</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+
+            <h2>Madeira</h2>
+            <table id="madeiraTable">
+                <thead>
+                    <tr>
+                        <th>Área</th>
+                        <th>Tipo de Aviso</th>
+                        <th>Nível de Alerta</th>
+                        <th>Descrição</th>
+                        <th>Início</th>
+                        <th>Fim</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
         const API_URL = 'https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json';
-        const tableBody = document.querySelector('#warningsTable tbody');
         const loadingMessage = document.getElementById('loading');
         const errorMessage = document.getElementById('errorMessage');
-        const warningsTable = document.getElementById('warningsTable');
+        const warningsContent = document.getElementById('warningsContent'); // Div que contém todas as tabelas
+        
+        const continentTableBody = document.querySelector('#continentTable tbody');
+        const azoresTableBody = document.querySelector('#azoresTable tbody');
+        const madeiraTableBody = document.querySelector('#madeiraTable tbody');
 
-        // Objeto para mapear os códigos de área para os nomes dos distritos/regiões
-        // ATENÇÃO: Esta lista tenta ser o mais completa possível com base nos códigos conhecidos do IPMA,
-        // mas pode haver códigos adicionais ou específicos de zonas muito localizadas que não estejam aqui.
-        const areaNames = {
-            "AVE": "Aveiro",
-            "BGC": "Bragança",
-            "BRG": "Braga",
-            "CBR": "Castelo Branco",
-            "COI": "Coimbra",
-            "EVR": "Évora",
-            "FAR": "Faro",
-            "GRD": "Guarda",
-            "LEI": "Leiria",
-            "LIS": "Lisboa",
-            "PTL": "Portalegre",
-            "PRT": "Porto",
-            "STM": "Santarém",
-            "SET": "Setúbal",
-            "VCB": "Viana do Castelo",
-            "VRL": "Vila Real",
-            "VIS": "Viseu",
-            "BSJ": "Beja",
+        // Objeto para mapear os códigos de área para os nomes dos distritos/regiões E a sua região
+        const areaInfo = {
+            "AVE": { name: "Aveiro", region: "Continente" },
+            "BGC": { name: "Bragança", region: "Continente" },
+            "BRG": { name: "Braga", region: "Continente" },
+            "CBR": { name: "Castelo Branco", region: "Continente" },
+            "COI": { name: "Coimbra", region: "Continente" },
+            "EVR": { name: "Évora", region: "Continente" },
+            "FAR": { name: "Faro", region: "Continente" },
+            "GRD": { name: "Guarda", region: "Continente" },
+            "LEI": { name: "Leiria", region: "Continente" },
+            "LIS": { name: "Lisboa", region: "Continente" },
+            "PTL": { name: "Portalegre", region: "Continente" },
+            "PRT": { name: "Porto", region: "Continente" },
+            "STM": { name: "Santarém", region: "Continente" },
+            "SET": { name: "Setúbal", region: "Continente" },
+            "VCB": { name: "Viana do Castelo", region: "Continente" },
+            "VRL": { name: "Vila Real", region: "Continente" },
+            "VIS": { name: "Viseu", region: "Continente" },
+            "BSJ": { name: "Beja", region: "Continente" },
+            "PTO": { name: "Porto", region: "Continente" }, // Duplicado de PRT
+            "GDA": { name: "Guarda", region: "Continente" }, // Duplicado de GRD
+            "STB": { name: "Setúbal", region: "Continente" }, // Duplicado de SET
+            "VCT": { name: "Viana do Castelo", region: "Continente" }, // Duplicado de VCB
+            "LSB": { name: "Lisboa", region: "Continente" }, // Duplicado de LIS
+            "LRA": { name: "Leiria", region: "Continente" }, // Duplicado de LEI
+            "BJA": { name: "Beja", region: "Continente" }, // Duplicado de BSJ
+            "CBO": { name: "Castelo Branco", region: "Continente" }, // Duplicado de CBR
+            "AVR": { name: "Aveiro", region: "Continente" }, // Duplicado de AVE
+            "PTG": { name: "Portalegre", region: "Continente" }, // Duplicado de PTL
 
-            // Códigos de distritos que não estavam na lista inicial (alguns são duplicados com os acima)
-            "ACE": "Açores (Grupo Central)", // Grupo Central (Graciosa, S. Jorge, Pico, Faial, Terceira)
-            "PTO": "Porto", // Duplicado de PRT
-            "AOC": "Açores (Grupo Ocidental)", // Grupo Ocidental (Corvo e Flores)
-            "GDA": "Guarda", // Duplicado de GRD
-            "AOR": "Açores (Grupo Oriental)", // Grupo Oriental (S. Miguel e Santa Maria)
-            "STB": "Setúbal", // Duplicado de SET
-            "MRM": "Madeira (Região Montanhosa)", // Nova área mais específica
-            "VCT": "Viana do Castelo", // Duplicado de VCB
-            "LSB": "Lisboa", // Duplicado de LIS
-            "LRA": "Leiria", // Duplicado de LEI
-            "MCN": "Madeira (Costa Norte)",
-            "BJA": "Beja", // Duplicado de BSJ
-            "CBO": "Castelo Branco", // Duplicado de CBR
-            "AVR": "Aveiro", // Duplicado de AVE
-            "PTG": "Portalegre", // Duplicado de PTL
-            "MCS": "Madeira (Costa Sul)",
+            "ACZ": { name: "Açores (Grupo Ocidental - Corvo e Flores)", region: "Açores" },
+            "ACG": { name: "Açores (Grupo Central - Graciosa, S. Jorge, Pico, Faial, Terceira)", region: "Açores" },
+            "ACL": { name: "Açores (Grupo Oriental - S. Miguel e Santa Maria)", region: "Açores" },
+            "ACE": { name: "Açores (Grupo Central)", region: "Açores" }, // Mais genérico
+            "AOC": { name: "Açores (Grupo Ocidental)", region: "Açores" }, // Mais genérico
+            "AOR": { name: "Açores (Grupo Oriental)", region: "Açores" }, // Mais genérico
 
-            // Códigos existentes que foram ajustados para serem mais específicos ou já estavam
-            "ACZ": "Açores (Grupo Ocidental - Corvo e Flores)", 
-            "ACG": "Açores (Grupo Central - Graciosa, S. Jorge, Pico, Faial, Terceira)",
-            "ACL": "Açores (Grupo Oriental - S. Miguel e Santa Maria)",
-            "MDC": "Madeira (Costa Sul)",
-            "MDN": "Madeira (Costa Norte)",
-            "MPS": "Madeira (Porto Santo)",
-            "MDS": "Madeira (Serra)" // Este pode ser um código mais antigo para a região montanhosa
+            "MDC": { name: "Madeira (Costa Sul)", region: "Madeira" },
+            "MDN": { name: "Madeira (Costa Norte)", region: "Madeira" },
+            "MPS": { name: "Madeira (Porto Santo)", region: "Madeira" },
+            "MDS": { name: "Madeira (Serra)", region: "Madeira" },
+            "MRM": { name: "Madeira (Região Montanhosa)", region: "Madeira" }, // Nova área mais específica
+            "MCS": { name: "Madeira (Costa Sul)", region: "Madeira" } // Duplicado de MDC
         };
 
         function formatDateTime(dateTimeString) {
@@ -174,10 +220,31 @@
             }
         }
 
+        // Função para adicionar uma linha de aviso a uma tabela específica
+        function addWarningRow(tableBody, warning) {
+            const row = tableBody.insertRow();
+            const alertColorClass = getAlertColorClass(warning.awarenessLevelID);
+            const translatedAlertLevel = translateAlertLevel(warning.awarenessLevelID);
+            
+            const areaCode = warning.idAreaAviso;
+            const areaName = areaInfo[areaCode] ? areaInfo[areaCode].name : areaCode || 'N/A';
+
+            row.insertCell().textContent = areaName;
+            row.insertCell().textContent = warning.awarenessTypeName || 'N/A';
+            row.insertCell().innerHTML = `<span class="alert-level ${alertColorClass}">${translatedAlertLevel}</span>`;
+            row.insertCell().textContent = warning.text || 'N/A';
+            row.insertCell().textContent = formatDateTime(warning.startTime);
+            row.insertCell().textContent = formatDateTime(warning.endTime);
+        }
+
         async function fetchWarnings() {
-            tableBody.innerHTML = ''; 
+            // Limpa todas as tabelas antes de cada nova busca
+            continentTableBody.innerHTML = ''; 
+            azoresTableBody.innerHTML = '';
+            madeiraTableBody.innerHTML = '';
+
             loadingMessage.style.display = 'block';
-            warningsTable.style.display = 'none';
+            warningsContent.style.display = 'none'; // Esconde o conteúdo das tabelas enquanto carrega
             errorMessage.style.display = 'none';
 
             try {
@@ -190,27 +257,52 @@
                 if (Array.isArray(data)) { 
                     const warnings = data;
 
+                    // Arrays para armazenar avisos por região
+                    const continentWarnings = [];
+                    const azoresWarnings = [];
+                    const madeiraWarnings = [];
+
                     if (warnings.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="6">Não existem avisos meteorológicos ativos neste momento.</td></tr>';
+                        continentTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para o Continente.</td></tr>';
+                        azoresTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para os Açores.</td></tr>';
+                        madeiraTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para a Madeira.</td></tr>';
                     } else {
                         warnings.forEach(warning => {
-                            const row = tableBody.insertRow();
-                            const alertColorClass = getAlertColorClass(warning.awarenessLevelID);
-                            const translatedAlertLevel = translateAlertLevel(warning.awarenessLevelID);
-                            
-                            // *** USO DO MAPA areaNames MELHORADO ***
                             const areaCode = warning.idAreaAviso;
-                            const areaName = areaNames[areaCode] || areaCode || 'N/A'; // Tenta encontrar o nome, senão usa o código, senão "N/A"
+                            const info = areaInfo[areaCode];
 
-                            row.insertCell().textContent = areaName;
-                            row.insertCell().textContent = warning.awarenessTypeName || 'N/A';
-                            row.insertCell().innerHTML = `<span class="alert-level ${alertColorClass}">${translatedAlertLevel}</span>`;
-                            row.insertCell().textContent = warning.text || 'N/A';
-                            row.insertCell().textContent = formatDateTime(warning.startTime);
-                            row.insertCell().textContent = formatDateTime(warning.endTime);
+                            if (info) {
+                                if (info.region === "Continente") {
+                                    continentWarnings.push(warning);
+                                } else if (info.region === "Açores") {
+                                    azoresWarnings.push(warning);
+                                } else if (info.region === "Madeira") {
+                                    madeiraWarnings.push(warning);
+                                }
+                            }
+                            // Avisos com códigos não mapeados serão ignorados ou pode-se adicionar uma secção "Outros"
                         });
+
+                        // Adiciona os avisos às respetivas tabelas
+                        if (continentWarnings.length > 0) {
+                            continentWarnings.forEach(w => addWarningRow(continentTableBody, w));
+                        } else {
+                            continentTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para o Continente.</td></tr>';
+                        }
+
+                        if (azoresWarnings.length > 0) {
+                            azoresWarnings.forEach(w => addWarningRow(azoresTableBody, w));
+                        } else {
+                            azoresTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para os Açores.</td></tr>';
+                        }
+
+                        if (madeiraWarnings.length > 0) {
+                            madeiraWarnings.forEach(w => addWarningRow(madeiraTableBody, w));
+                        } else {
+                            madeiraTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para a Madeira.</td></tr>';
+                        }
                     }
-                    warningsTable.style.display = 'table';
+                    warningsContent.style.display = 'block'; // Mostra o conteúdo das tabelas
                 } else {
                     errorMessage.textContent = 'Formato de dados inesperado da API. Esperava um array de avisos.';
                     errorMessage.style.display = 'block';
@@ -229,4 +321,3 @@
     </script>
 </body>
 </html>
-
