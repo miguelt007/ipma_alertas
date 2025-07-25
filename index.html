@@ -72,7 +72,14 @@
             color: #666;
             font-style: italic;
         }
-        /* REMOVIDO: .awareness-icon styles já não são necessários */
+        /* Estilos para os ícones SVG */
+        .awareness-icon {
+            margin-right: 8px;
+            vertical-align: middle; /* Alinha o ícone com o texto */
+            width: 20px; /* Tamanho do ícone */
+            height: 20px;
+            fill: currentColor; /* Faz com que o ícone herde a cor do texto */
+        }
         /* Botão de Tema */
         #themeToggle {
             background-color: #0056b3;
@@ -137,7 +144,9 @@
         body.dark-mode .no-warnings {
             color: #b0b0b0;
         }
-        /* REMOVIDO: .awareness-icon styles para dark mode já não são necessários */
+        body.dark-mode .awareness-icon {
+            fill: #e0e0e0; /* Ícones mais claros no tema escuro */
+        }
         body.dark-mode #themeToggle {
             background-color: #4CAF50;
             color: #fff;
@@ -270,8 +279,32 @@
             "MCN": { name: "Madeira (Costa Norte)", region: "Madeira" }
         };
 
-        // REMOVIDO: Objeto para mapear tipos de aviso a ícones Font Awesome já não é necessário
-        // const awarenessTypeIcons = { /* ... */ };
+        // Objeto para mapear tipos de aviso a ÍCONES SVG
+        // Pode encontrar mais ícones SVG em sites como:
+        // - Heroicons (heroicons.com)
+        // - Tabler Icons (tabler-icons.io)
+        // - SVG Repo (svgrepo.com)
+        const awarenessTypeSVGs = {
+            "Tempo Quente": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 3a1 1 0 0 1 1 1v1a1 1 0 0 1-2 0V4a1 1 0 0 1 1-1zm6.364 1.636a1 1 0 0 1 0 1.414l-.707.707a1 1 0 0 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0zm-12.728 0a1 1 0 0 1 1.414 0l.707.707a1 1 0 0 1-1.414 1.414l-.707-.707a1 1 0 0 1 0-1.414zM19 11a1 1 0 0 1 1 1h1a1 1 0 0 1 0 2h-1a1 1 0 0 1-1-1v-1zm-16 0a1 1 0 0 1 1 1v1a1 1 0 0 1-2 0v-1a1 1 0 0 1 1-1zm16.364 6.364a1 1 0 0 1 0 1.414l-.707.707a1 1 0 0 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0zm-12.728 0a1 1 0 0 1 1.414 0l.707.707a1 1 0 0 1-1.414 1.414l-.707-.707a1 1 0 0 1 0-1.414zM12 18a1 1 0 0 1 1 1v1a1 1 0 0 1-2 0v-1a1 1 0 0 1 1-1zm0-10a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>',
+            "Chuva": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 10h-1.382A5.001 5.001 0 0 0 6 10c0 2.761 2.239 5 5 5h.001c.001 0 .001 0 .001 0 2.761 0 5-2.239 5-5zM12 17v4m-2-2h4m-2 0v-2m-2-2h4m-2 0v-2m-2-2h4m-2 0v-2"/></svg>',
+            "Vento": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-2a7 7 0 1 1 0-14 7 7 0 0 1 0 14zm-1-7h2v-4h-2v4zm0 6h2v-2h-2v2zm0-10h2v-2h-2v2z"/></svg>',
+            "Neve": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 3a1 1 0 0 1 1 1v1a1 1 0 0 1-2 0V4a1 1 0 0 1 1-1zm6.364 1.636a1 1 0 0 1 0 1.414l-.707.707a1 1 0 0 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0zm-12.728 0a1 1 0 0 1 1.414 0l.707.707a1 1 0 0 1-1.414 1.414l-.707-.707a1 1 0 0 1 0-1.414zM19 11a1 1 0 0 1 1 1h1a1 1 0 0 1 0 2h-1a1 1 0 0 1-1-1v-1zm-16 0a1 1 0 0 1 1 1v1a1 1 0 0 1-2 0v-1a1 1 0 0 1 1-1zm16.364 6.364a1 1 0 0 1 0 1.414l-.707.707a1 1 0 0 1-1.414-1.414l.707-.707a1 1 0 0 1 1.414 0zm-12.728 0a1 1 0 0 1 1.414 0l.707.707a1 1 0 0 1-1.414 1.414l-.707-.707a1 1 0 0 1 0-1.414zM12 18a1 1 0 0 1 1 1v1a1 1 0 0 1-2 0v-1a1 1 0 0 1 1-1zm0-10a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/></svg>',
+            "Agitação Marítima": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Trovoada": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 21h4v-3h-4v3zm-3-3h10v-3H7v3zm-3-3h16v-3H4v3zm-1-3h18v-3H3v3zm-1-3h20v-3H2v3z"/></svg>',
+            "Nevoeiro": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Radiação UV": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Gelo": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Queda de Neve": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Precipitação": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Vento Forte": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Temperatura Mínima": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Temperatura Máxima": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Descida de Temperatura": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Subida de Temperatura": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Perigo de Incêndio Rural": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Geada": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>',
+            "Tempo Frio": '<svg class="awareness-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm0 2c4.418 0 8 3.582 8 8s-3.582 8-8 8-8-3.582-8-8 3.582-8 8-8zm-2 4h4v2h-4V8zm0 4h4v2h-4v-2zm0 4h4v2h-4v-2z"/></svg>'
+        };
 
         function formatDateTime(dateTimeString) {
             if (!dateTimeString) return 'N/A';
@@ -316,147 +349,12 @@
             const areaName = areaInfo[areaCode] ? areaInfo[areaCode].name : areaCode || 'N/A';
 
             let awarenessTypeText = warning.awarenessTypeName || 'N/A';
-            // REMOVIDO: A lógica de adicionar ícones foi removida
-            // const iconClass = awarenessTypeIcons[awarenessTypeText];
-            // if (iconClass) {
-            //     awarenessTypeText = `<i class="${iconClass} awareness-icon"></i>${awarenessTypeText}`;
-            // }
+            const iconSVG = awarenessTypeSVGs[awarenessTypeText]; // Pega o SVG correspondente
+            if (iconSVG) {
+                // Insere o SVG antes do texto
+                awarenessTypeText = `${iconSVG}${awarenessTypeText}`;
+            }
 
             row.insertCell().textContent = areaName;
-            row.insertCell().innerHTML = awarenessTypeText; // Agora só mostra o texto
-            row.insertCell().innerHTML = `<span class="alert-level ${alertColorClass}">${translatedAlertLevel}</span>`;
-            row.insertCell().textContent = warning.text || 'N/A';
-            row.insertCell().textContent = formatDateTime(warning.startTime);
-            row.insertCell().textContent = formatDateTime(warning.endTime);
-        }
-
-        async function fetchWarnings() {
-            // Limpa todas as tabelas antes de cada nova busca
-            continentTableBody.innerHTML = ''; 
-            azoresTableBody.innerHTML = '';
-            madeiraTableBody.innerHTML = '';
-
-            loadingMessage.style.display = 'block';
-            warningsContent.style.display = 'none'; 
-            errorMessage.style.display = 'none';
-
-            try {
-                const response = await fetch(API_URL);
-                if (!response.ok) {
-                    throw new Error(`Erro HTTP! Status: ${response.status}`);
-                }
-                const data = await response.json();
-                
-                console.log('Dados recebidos da API:', data); 
-
-                if (Array.isArray(data)) { 
-                    const warnings = data;
-
-                    const continentWarnings = [];
-                    const azoresWarnings = [];
-                    const madeiraWarnings = [];
-
-                    // Categoriza os avisos
-                    warnings.forEach(warning => {
-                        const areaCode = warning.idAreaAviso;
-                        const info = areaInfo[areaCode];
-
-                        if (info) {
-                            if (info.region === "Continente") {
-                                continentWarnings.push(warning);
-                            } else if (info.region === "Açores") {
-                                azoresWarnings.push(warning);
-                            } else if (info.region === "Madeira") {
-                                madeiraWarnings.push(warning);
-                            }
-                        }
-                    });
-
-                    // Função de comparação para ordenação alfabética pelo nome da área
-                    const sortWarnings = (a, b) => {
-                        const nameA = areaInfo[a.idAreaAviso]?.name || a.idAreaAviso || '';
-                        const nameB = areaInfo[b.idAreaAviso]?.name || b.idAreaAviso || '';
-                        return nameA.localeCompare(nameB, 'pt', { sensitivity: 'base' });
-                    };
-
-                    continentWarnings.sort(sortWarnings);
-                    azoresWarnings.sort(sortWarnings);
-                    madeiraWarnings.sort(sortWarnings);
-
-                    // Adiciona os avisos às respetivas tabelas, ou uma mensagem de "sem avisos"
-                    if (continentWarnings.length > 0) {
-                        continentWarnings.forEach(w => addWarningRow(continentTableBody, w));
-                    } else {
-                        continentTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para o Continente.</td></tr>';
-                    }
-
-                    if (azoresWarnings.length > 0) {
-                        azoresWarnings.forEach(w => addWarningRow(azoresTableBody, w));
-                    } else {
-                        azoresTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para os Açores.</td></tr>';
-                    }
-
-                    if (madeiraWarnings.length > 0) {
-                        madeiraWarnings.forEach(w => addWarningRow(madeiraTableBody, w));
-                    } else {
-                        madeiraTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para a Madeira.</td></tr>';
-                    }
-                    warningsContent.style.display = 'block'; 
-                } else {
-                    errorMessage.textContent = 'Formato de dados inesperado da API. Esperava um array de avisos.';
-                    errorMessage.style.display = 'block';
-                }
-            } catch (error) {
-                console.error('Erro ao carregar avisos:', error);
-                errorMessage.textContent = `Erro ao carregar avisos: ${error.message}`;
-                errorMessage.style.display = 'block';
-            } finally {
-                loadingMessage.style.display = 'none';
-            }
-        }
-
-        // --- Lógica do Tema Escuro ---
-        function applyTheme(theme) {
-            console.log('A aplicar tema:', theme);
-            if (theme === 'dark') {
-                document.body.classList.add('dark-mode');
-                themeToggle.textContent = 'Tema Claro';
-            } else {
-                document.body.classList.remove('dark-mode');
-                themeToggle.textContent = 'Tema Escuro';
-            }
-        }
-
-        // Carrega o tema guardado ou deteta a preferência do sistema
-        if (themeToggle) {
-            const savedTheme = localStorage.getItem('theme');
-            console.log('Tema guardado:', savedTheme);
-            if (savedTheme) {
-                applyTheme(savedTheme);
-            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                applyTheme('dark');
-            } else {
-                applyTheme('light'); 
-            }
-
-            // Event listener para o botão de alternar tema
-            themeToggle.addEventListener('click', () => {
-                console.log('Botão de tema clicado!');
-                if (document.body.classList.contains('dark-mode')) {
-                    applyTheme('light');
-                    localStorage.setItem('theme', 'light');
-                } else {
-                    applyTheme('dark');
-                    localStorage.setItem('theme', 'dark');
-                }
-            });
-        } else {
-            console.error('Erro: Botão themeToggle não encontrado no DOM!');
-        }
-        // --- Fim da Lógica do Tema Escuro ---
-
-        fetchWarnings(); 
-        setInterval(fetchWarnings, 300000); 
-    </script>
-</body>
-</html>
+            row.insertCell().innerHTML = awarenessTypeText; 
+            row.insertCell().innerHTML = `<span class="alert-level ${alertColorCl
