@@ -89,6 +89,8 @@
         const warningsTable = document.getElementById('warningsTable');
 
         // Objeto para mapear os códigos de área para os nomes dos distritos/regiões
+        // ATENÇÃO: Esta lista tenta ser o mais completa possível com base nos códigos conhecidos do IPMA,
+        // mas pode haver códigos adicionais ou específicos de zonas muito localizadas que não estejam aqui.
         const areaNames = {
             "AVE": "Aveiro",
             "BGC": "Bragança",
@@ -108,13 +110,33 @@
             "VRL": "Vila Real",
             "VIS": "Viseu",
             "BSJ": "Beja",
-            "ACZ": "Açores (Zona Ocidental)", // Corvo e Flores
-            "ACG": "Açores (Grupo Central)", // Graciosa, S. Jorge, Pico, Faial, Terceira
-            "ACL": "Açores (Grupo Oriental)", // S. Miguel e Santa Maria
+
+            // Códigos de distritos que não estavam na lista inicial (alguns são duplicados com os acima)
+            "ACE": "Açores (Grupo Central)", // Grupo Central (Graciosa, S. Jorge, Pico, Faial, Terceira)
+            "PTO": "Porto", // Duplicado de PRT
+            "AOC": "Açores (Grupo Ocidental)", // Grupo Ocidental (Corvo e Flores)
+            "GDA": "Guarda", // Duplicado de GRD
+            "AOR": "Açores (Grupo Oriental)", // Grupo Oriental (S. Miguel e Santa Maria)
+            "STB": "Setúbal", // Duplicado de SET
+            "MRM": "Madeira (Região Montanhosa)", // Nova área mais específica
+            "VCT": "Viana do Castelo", // Duplicado de VCB
+            "LSB": "Lisboa", // Duplicado de LIS
+            "LRA": "Leiria", // Duplicado de LEI
+            "MCN": "Madeira (Costa Norte)",
+            "BJA": "Beja", // Duplicado de BSJ
+            "CBO": "Castelo Branco", // Duplicado de CBR
+            "AVR": "Aveiro", // Duplicado de AVE
+            "PTG": "Portalegre", // Duplicado de PTL
+            "MCS": "Madeira (Costa Sul)",
+
+            // Códigos existentes que foram ajustados para serem mais específicos ou já estavam
+            "ACZ": "Açores (Grupo Ocidental - Corvo e Flores)", 
+            "ACG": "Açores (Grupo Central - Graciosa, S. Jorge, Pico, Faial, Terceira)",
+            "ACL": "Açores (Grupo Oriental - S. Miguel e Santa Maria)",
             "MDC": "Madeira (Costa Sul)",
             "MDN": "Madeira (Costa Norte)",
             "MPS": "Madeira (Porto Santo)",
-            "MDS": "Madeira (Serra)"
+            "MDS": "Madeira (Serra)" // Este pode ser um código mais antigo para a região montanhosa
         };
 
         function formatDateTime(dateTimeString) {
@@ -176,11 +198,11 @@
                             const alertColorClass = getAlertColorClass(warning.awarenessLevelID);
                             const translatedAlertLevel = translateAlertLevel(warning.awarenessLevelID);
                             
-                            // *** ALTERAÇÃO AQUI ***
-                            // Usa o mapa `areaNames` para obter o nome completo da área
-                            const areaName = areaNames[warning.idAreaAviso] || warning.idAreaAviso || 'N/A';
+                            // *** USO DO MAPA areaNames MELHORADO ***
+                            const areaCode = warning.idAreaAviso;
+                            const areaName = areaNames[areaCode] || areaCode || 'N/A'; // Tenta encontrar o nome, senão usa o código, senão "N/A"
 
-                            row.insertCell().textContent = areaName; // Exibe o nome completo
+                            row.insertCell().textContent = areaName;
                             row.insertCell().textContent = warning.awarenessTypeName || 'N/A';
                             row.insertCell().innerHTML = `<span class="alert-level ${alertColorClass}">${translatedAlertLevel}</span>`;
                             row.insertCell().textContent = warning.text || 'N/A';
@@ -207,3 +229,4 @@
     </script>
 </body>
 </html>
+
