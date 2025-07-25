@@ -16,7 +16,7 @@
             padding: 25px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            max-width: 800px;
+            max-width: 1000px; /* Increased max-width for more columns */
             margin: auto;
         }
         h1 {
@@ -33,13 +33,14 @@
             border: 1px solid #ddd;
             padding: 12px;
             text-align: left;
+            vertical-align: top;
         }
         th {
             background-color: #f2f2f2;
             font-weight: bold;
             color: #555;
         }
-        .alert-row .alert-level {
+        .alert-level {
             font-weight: bold;
             color: #fff; /* Cor do texto dentro da célula de cor de alerta */
             padding: 5px 10px;
@@ -50,47 +51,129 @@
         .alert-yellow { background-color: #f0c20c; } /* Amarelo */
         .alert-orange { background-color: #f5870a; } /* Laranja */
         .alert-red { background-color: #e02b2b; }    /* Vermelho */
-        .alert-green { background-color: #4CAF50; }    /* Verde (se aplicável) */
+        .alert-green { background-color: #4CAF50; }    /* Verde (se aplicável, para o caso de a API ter um nível "verde") */
+        .loading-message {
+            text-align: center;
+            font-size: 1.2em;
+            color: #666;
+            padding: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Aviso Meteorológico IPMA</h1>
-
-        <table>
+        <h1>Avisos Meteorológicos IPMA</h1>
+        <div id="loading" class="loading-message">A carregar dados dos avisos...</div>
+        <table id="warningsTable" style="display: none;">
             <thead>
                 <tr>
-                    <th>Campo</th>
-                    <th>Valor</th>
+                    <th>Área</th>
+                    <th>Tipo de Aviso</th>
+                    <th>Nível de Alerta</th>
+                    <th>Descrição</th>
+                    <th>Início</th>
+                    <th>Fim</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>**Descrição**</td>
-                    <td>Persistência de valores elevados da temperatura máxima.</td>
-                </tr>
-                <tr>
-                    <td>**Tipo de Aviso**</td>
-                    <td>Tempo Quente</td>
-                </tr>
-                <tr>
-                    <td>**Área Afetada**</td>
-                    <td>BGC (Bragança)</td>
-                </tr>
-                <tr>
-                    <td>**Início**</td>
-                    <td>26 de julho de 2025, 09:00:00</td>
-                </tr>
-                <tr>
-                    <td>**Fim**</td>
-                    <td>28 de julho de 2025, 00:00:00</td>
-                </tr>
-                <tr class="alert-row">
-                    <td>**Nível de Alerta**</td>
-                    <td><span class="alert-level alert-yellow">Amarelo</span></td>
-                </tr>
-            </tbody>
+                </tbody>
         </table>
+        <div id="errorMessage" class="loading-message" style="display: none; color: red;">Não foi possível carregar os dados dos avisos. Tente novamente mais tarde.</div>
     </div>
+
+    <script>
+        const API_URL = 'https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json';
+        const tableBody = document.querySelector('#warningsTable tbody');
+        const loadingMessage = document.getElementById('loading');
+        const errorMessage = document.getElementById('errorMessage');
+        const warningsTable = document.getElementById('warningsTable');
+
+        // Função para formatar a data
+        function formatDateTime(dateTimeString) {
+            if (!dateTimeString) return 'N/A';
+            const date = new Date(dateTimeString);
+            return date.toLocaleString('pt-PT', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        // Função para obter a classe CSS da cor do alerta
+        function getAlertColorClass(levelId) {
+            switch (levelId.toLowerCase()) {
+                case 'green':
+                    return 'alert-green';
+                case 'yellow':
+                    return 'alert-yellow';
+                case 'orange':
+                    return 'alert-orange';
+                case 'red':
+                    return 'alert-red';
+                default:
+                    return '';
+            }
+        }
+
+        // Função para traduzir o nível de alerta para português
+        function translateAlertLevel(levelId) {
+            switch (levelId.toLowerCase()) {
+                case 'green':
+                    return 'Verde';
+                case 'yellow':
+                    return 'Amarelo';
+                case 'orange':
+                    return 'Laranja';
+                case 'red':
+                    return 'Vermelho';
+                default:
+                    return levelId;
+            }
+        }
+
+        async function fetchWarnings() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                // Assuming data.data is an array of warnings based on the previous sample
+                if (data && Array.isArray(data.data)) {
+                    if (data.data.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="6">Não existem avisos meteorológicos ativos neste momento.</td></tr>';
+                    } else {
+                        data.data.forEach(warning => {
+                            const row = tableBody.insertRow();
+                            const alertColorClass = getAlertColorClass(warning.awarenessLevelID);
+                            const translatedAlertLevel = translateAlertLevel(warning.awarenessLevelID);
+
+                            row.insertCell().textContent = warning.idAreaAviso || 'N/A';
+                            row.insertCell().textContent = warning.awarenessTypeName || 'N/A';
+                            row.insertCell().innerHTML = `<span class="alert-level ${alertColorClass}">${translatedAlertLevel}</span>`;
+                            row.insertCell().textContent = warning.text || 'N/A';
+                            row.insertCell().textContent = formatDateTime(warning.startTime);
+                            row.insertCell().textContent = formatDateTime(warning.endTime);
+                        });
+                    }
+                    warningsTable.style.display = 'table'; // Show the table
+                } else {
+                    errorMessage.textContent = 'Formato de dados inesperado da API.';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar avisos:', error);
+                errorMessage.style.display = 'block'; // Show error message
+            } finally {
+                loadingMessage.style.display = 'none'; // Hide loading message
+            }
+        }
+
+        fetchWarnings();
+    </script>
 </body>
 </html>
