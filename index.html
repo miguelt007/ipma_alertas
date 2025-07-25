@@ -266,46 +266,51 @@
                     const azoresWarnings = [];
                     const madeiraWarnings = [];
 
-                    if (warnings.length === 0) {
-                        continentTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para o Continente.</td></tr>';
-                        azoresTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para os Açores.</td></tr>';
-                        madeiraTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para a Madeira.</td></tr>';
-                    } else {
-                        warnings.forEach(warning => {
-                            const areaCode = warning.idAreaAviso;
-                            const info = areaInfo[areaCode];
+                    // Categoriza os avisos
+                    warnings.forEach(warning => {
+                        const areaCode = warning.idAreaAviso;
+                        const info = areaInfo[areaCode];
 
-                            if (info) {
-                                if (info.region === "Continente") {
-                                    continentWarnings.push(warning);
-                                } else if (info.region === "Açores") {
-                                    azoresWarnings.push(warning);
-                                } else if (info.region === "Madeira") {
-                                    madeiraWarnings.push(warning);
-                                }
+                        if (info) {
+                            if (info.region === "Continente") {
+                                continentWarnings.push(warning);
+                            } else if (info.region === "Açores") {
+                                azoresWarnings.push(warning);
+                            } else if (info.region === "Madeira") {
+                                madeiraWarnings.push(warning);
                             }
-                            // Avisos com códigos não mapeados simplesmente não aparecerão em nenhuma tabela.
-                            // Se quiser que apareçam numa secção "Outros", teria de criar uma nova tabela para isso.
-                        });
-
-                        // Adiciona os avisos às respetivas tabelas, ou uma mensagem de "sem avisos"
-                        if (continentWarnings.length > 0) {
-                            continentWarnings.forEach(w => addWarningRow(continentTableBody, w));
-                        } else {
-                            continentTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para o Continente.</td></tr>';
                         }
+                    });
 
-                        if (azoresWarnings.length > 0) {
-                            azoresWarnings.forEach(w => addWarningRow(azoresTableBody, w));
-                        } else {
-                            azoresTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para os Açores.</td></tr>';
-                        }
+                    // *** ORDENAÇÃO AQUI ***
+                    // Função de comparação para ordenação alfabética pelo nome da área
+                    const sortWarnings = (a, b) => {
+                        const nameA = areaInfo[a.idAreaAviso]?.name || a.idAreaAviso || '';
+                        const nameB = areaInfo[b.idAreaAviso]?.name || b.idAreaAviso || '';
+                        return nameA.localeCompare(nameB, 'pt', { sensitivity: 'base' });
+                    };
 
-                        if (madeiraWarnings.length > 0) {
-                            madeiraWarnings.forEach(w => addWarningRow(madeiraTableBody, w));
-                        } else {
-                            madeiraTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para a Madeira.</td></tr>';
-                        }
+                    continentWarnings.sort(sortWarnings);
+                    azoresWarnings.sort(sortWarnings);
+                    madeiraWarnings.sort(sortWarnings);
+
+                    // Adiciona os avisos às respetivas tabelas, ou uma mensagem de "sem avisos"
+                    if (continentWarnings.length > 0) {
+                        continentWarnings.forEach(w => addWarningRow(continentTableBody, w));
+                    } else {
+                        continentTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para o Continente.</td></tr>';
+                    }
+
+                    if (azoresWarnings.length > 0) {
+                        azoresWarnings.forEach(w => addWarningRow(azoresTableBody, w));
+                    } else {
+                        azoresTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para os Açores.</td></tr>';
+                    }
+
+                    if (madeiraWarnings.length > 0) {
+                        madeiraWarnings.forEach(w => addWarningRow(madeiraTableBody, w));
+                    } else {
+                        madeiraTableBody.innerHTML = '<tr><td colspan="6" class="no-warnings">Não existem avisos meteorológicos ativos para a Madeira.</td></tr>';
                     }
                     warningsContent.style.display = 'block'; 
                 } else {
