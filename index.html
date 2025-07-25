@@ -16,7 +16,7 @@
             padding: 25px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            max-width: 1000px; /* Increased max-width for more columns */
+            max-width: 1000px; /* Aumentado para melhor visualização das colunas */
             margin: auto;
         }
         h1 {
@@ -48,10 +48,10 @@
             display: inline-block;
         }
         /* Cores dos alertas */
-        .alert-yellow { background-color: #f0c20c; } /* Amarelo */
-        .alert-orange { background-color: #f5870a; } /* Laranja */
-        .alert-red { background-color: #e02b2b; }    /* Vermelho */
-        .alert-green { background-color: #4CAF50; }    /* Verde (se aplicável, para o caso de a API ter um nível "verde") */
+        .alert-yellow { background-color: #f0c20c; }
+        .alert-orange { background-color: #f5870a; }
+        .alert-red { background-color: #e02b2b; }
+        .alert-green { background-color: #4CAF50; } /* Para o caso de a API ter um nível "verde" */
         .loading-message {
             text-align: center;
             font-size: 1.2em;
@@ -88,7 +88,7 @@
         const errorMessage = document.getElementById('errorMessage');
         const warningsTable = document.getElementById('warningsTable');
 
-        // Função para formatar a data
+        // Função para formatar a data e hora para um formato legível em português
         function formatDateTime(dateTimeString) {
             if (!dateTimeString) return 'N/A';
             const date = new Date(dateTimeString);
@@ -102,77 +102,79 @@
             });
         }
 
-        // Função para obter a classe CSS da cor do alerta
+        // Função para obter a classe CSS da cor do alerta com base no ID do nível
         function getAlertColorClass(levelId) {
+            if (!levelId) return '';
             switch (levelId.toLowerCase()) {
-                case 'green':
-                    return 'alert-green';
-                case 'yellow':
-                    return 'alert-yellow';
-                case 'orange':
-                    return 'alert-orange';
-                case 'red':
-                    return 'alert-red';
-                default:
-                    return '';
+                case 'green': return 'alert-green';
+                case 'yellow': return 'alert-yellow';
+                case 'orange': return 'alert-orange';
+                case 'red': return 'alert-red';
+                default: return ''; // Retorna vazio se o ID não for reconhecido
             }
         }
 
-        // Função para traduzir o nível de alerta para português
+        // Função para traduzir o ID do nível de alerta para o nome em português
         function translateAlertLevel(levelId) {
+            if (!levelId) return 'N/A';
             switch (levelId.toLowerCase()) {
-                case 'green':
-                    return 'Verde';
-                case 'yellow':
-                    return 'Amarelo';
-                case 'orange':
-                    return 'Laranja';
-                case 'red':
-                    return 'Vermelho';
-                default:
-                    return levelId;
+                case 'green': return 'Verde';
+                case 'yellow': return 'Amarelo';
+                case 'orange': return 'Laranja';
+                case 'red': return 'Vermelho';
+                default: return levelId; // Retorna o próprio ID se não houver tradução
             }
         }
 
+        // Função assíncrona para buscar e exibir os avisos da API
         async function fetchWarnings() {
             try {
                 const response = await fetch(API_URL);
                 if (!response.ok) {
-                    throw new Error(`Erro HTTP! status: ${response.status}`);
+                    throw new Error(`Erro HTTP! Status: ${response.status}`);
                 }
                 const data = await response.json();
                 
-                // Assuming data.data is an array of warnings based on the previous sample
-                if (data && Array.isArray(data.data)) {
-                    if (data.data.length === 0) {
+                // A expectativa é que a API retorne um array de avisos diretamente.
+                if (Array.isArray(data)) { 
+                    const warnings = data; // Os dados são o array diretamente
+
+                    if (warnings.length === 0) {
                         tableBody.innerHTML = '<tr><td colspan="6">Não existem avisos meteorológicos ativos neste momento.</td></tr>';
                     } else {
-                        data.data.forEach(warning => {
+                        warnings.forEach(warning => {
                             const row = tableBody.insertRow();
                             const alertColorClass = getAlertColorClass(warning.awarenessLevelID);
                             const translatedAlertLevel = translateAlertLevel(warning.awarenessLevelID);
 
+                            // Preenche as células da tabela com os dados do aviso
                             row.insertCell().textContent = warning.idAreaAviso || 'N/A';
                             row.insertCell().textContent = warning.awarenessTypeName || 'N/A';
+                            // A célula do nível de alerta inclui um span para aplicar a cor
                             row.insertCell().innerHTML = `<span class="alert-level ${alertColorClass}">${translatedAlertLevel}</span>`;
                             row.insertCell().textContent = warning.text || 'N/A';
                             row.insertCell().textContent = formatDateTime(warning.startTime);
                             row.insertCell().textContent = formatDateTime(warning.endTime);
                         });
                     }
-                    warningsTable.style.display = 'table'; // Show the table
+                    warningsTable.style.display = 'table'; // Mostra a tabela após carregar os dados
                 } else {
-                    errorMessage.textContent = 'Formato de dados inesperado da API.';
+                    // Mensagem de erro se o formato dos dados não for o esperado (não é um array)
+                    errorMessage.textContent = 'Formato de dados inesperado da API. Esperava um array de avisos.';
                     errorMessage.style.display = 'block';
                 }
             } catch (error) {
+                // Captura e exibe qualquer erro que ocorra durante o processo de fetch
                 console.error('Erro ao carregar avisos:', error);
-                errorMessage.style.display = 'block'; // Show error message
+                errorMessage.textContent = `Erro ao carregar avisos: ${error.message}`;
+                errorMessage.style.display = 'block';
             } finally {
-                loadingMessage.style.display = 'none'; // Hide loading message
+                // Esconde a mensagem de carregamento, independentemente do sucesso ou falha
+                loadingMessage.style.display = 'none';
             }
         }
 
+        // Chama a função para buscar os avisos quando a página carrega
         fetchWarnings();
     </script>
 </body>
