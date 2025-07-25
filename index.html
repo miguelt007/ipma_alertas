@@ -165,9 +165,6 @@
                 display: block; /* Permite a tabela ser rolada */
                 width: max-content; /* Ocupa o conteúdo mínimo necessário */
             }
-            /* Opcional: Ajustar largura de colunas para melhor visualização em mobile */
-            /* th:nth-child(1), td:nth-child(1) { min-width: 120px; } */ /* Área */
-            /* th:nth-child(4), td:nth-child(4) { min-width: 250px; } */ /* Descrição */
         }
     </style>
 </head>
@@ -244,7 +241,7 @@
         const continentTableBody = document.querySelector('#continentTable tbody');
         const azoresTableBody = document.querySelector('#azoresTable tbody');
         const madeiraTableBody = document.querySelector('#madeiraTable tbody');
-        const themeToggle = document.getElementById('themeToggle'); // Referência ao botão de tema
+        const themeToggle = document.getElementById('themeToggle'); 
 
         // Objeto para mapear os códigos de área para os nomes dos distritos/regiões E a sua região.
         const areaInfo = {
@@ -302,6 +299,7 @@
             "Subida de Temperatura": "fa-solid fa-temperature-arrow-up",
             "Perigo de Incêndio Rural": "fa-solid fa-fire",
             "Geada": "fa-solid fa-ice",
+            "Tempo Frio": "fa-solid fa-temperature-low",
             // Adicione mais tipos de aviso e ícones conforme necessário
         };
 
@@ -378,6 +376,8 @@
                 }
                 const data = await response.json();
                 
+                console.log('Dados recebidos da API:', data); 
+
                 if (Array.isArray(data)) { 
                     const warnings = data;
 
@@ -446,6 +446,7 @@
 
         // --- Lógica do Tema Escuro ---
         function applyTheme(theme) {
+            console.log('A aplicar tema:', theme); // Depuração: Qual tema está a ser aplicado
             if (theme === 'dark') {
                 document.body.classList.add('dark-mode');
                 themeToggle.textContent = 'Tema Claro';
@@ -456,8 +457,10 @@
         }
 
         // Carrega o tema guardado ou deteta a preferência do sistema
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            applyTheme(savedTheme);
-        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            // Se o utilizador tem preferência por tema escuro no sistema e não há te
+        // Verificação adicional para garantir que themeToggle existe antes de usá-lo
+        if (themeToggle) {
+            const savedTheme = localStorage.getItem('theme');
+            console.log('Tema guardado:', savedTheme); // Depuração: O que está guardado
+            if (savedTheme) {
+                applyTheme(savedTheme);
+            } else if (window.matchMedia && windo
