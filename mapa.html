@@ -3,40 +3,42 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Alertas Meteorológicos IPMA</title>
+    <title>Mapa de Alertas Meteorológicos IPMA</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; background: #111; color: white; }
         #topbar { background: #222; padding: 15px; text-align: center; border-bottom: 1px solid #444; }
-        #titulo { font-size: 22px; font-weight: bold; color: #fff; }
+        #titulo { font-size: 22px; font-weight: bold; }
         #data { font-size: 14px; color: #bbb; margin-top: 5px; }
-        #map { height: 85vh; width: 100%; }
+        #filtro { margin-top: 10px; }
+        select { padding: 6px; font-size: 16px; background: #333; color: white; border: 1px solid #555; }
+        #map { height: 80vh; width: 100%; }
         
-        /* Legenda flutuante */
         .legenda {
             background: white;
-            padding: 12px;
+            padding: 10px;
             line-height: 18px;
             color: #333;
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
-            border-radius: 8px;
-            font-size: 13px;
+            border-radius: 5px;
         }
-        .legenda i {
-            width: 16px;
-            height: 16px;
-            float: left;
-            margin-right: 8px;
-            opacity: 0.8;
-            border: 1px solid #999;
-        }
+        .legenda i { width: 16px; height: 16px; float: left; margin-right: 8px; opacity: 0.8; }
     </style>
 </head>
 <body>
 
 <div id="topbar">
     <div id="titulo">Alertas Meteorológicos IPMA</div>
-    <div id="data">A atualizar avisos...</div>
+    <div id="data">A carregar dados...</div>
+    
+    <div id="filtro">
+        Previsão para: 
+        <select id="selecaoDia">
+            <option value="0">Hoje</option>
+            <option value="1">Amanhã</option>
+            <option value="2">Depois de Amanhã</option>
+        </select>
+    </div>
 </div>
 
 <div id="map"></div>
@@ -44,124 +46,119 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-// 1. Configurar o Mapa
 const map = L.map('map').setView([39.5, -8.0], 7);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '© IPMA | OpenStreetMap'
 }).addTo(map);
 
-// 2. Variáveis de Estado
 let camadaGeo;
-let avisosAtivos = [];
-let dicionarioDicos = {};
-
-// Cores e Níveis
+let todosAvisos = [];
+let dicionarioNomes = {};
 const cores = { 'red': '#ff3333', 'orange': '#ff9900', 'yellow': '#ffff00', 'green': '#2ecc71' };
 const pesos = { 'red': 3, 'orange': 2, 'yellow': 1, 'green': 0 };
 
-async function iniciar() {
+async function carregarDados() {
     try {
-        // PASSO A: Carregar o dicionário que colaste (Distritos/Ilhas)
-        const resDicos = await fetch('https://api.ipma.pt/open-data/distrits-islands.json');
-        const dataDicos = await resDicos.json();
-        
-        // Criar mapeamento Sigla -> Nome (Ex: "LSB" -> "Lisboa")
-        dataDicos.data.forEach(item => {
-            dicionarioDicos[item.idAreaAviso] = item.local;
+        // 1. Carregar Nomes (o JSON que forneceste)
+        const resNomes = await fetch('https://api.ipma.pt/open-data/distrits-islands.json');
+        const dataNomes = await resNomes.json();
+        dataNomes.data.forEach(item => {
+            dicionarioNomes[item.idAreaAviso] = item.local;
         });
 
-        // PASSO B: Carregar Avisos do IPMA
+        // 2. Carregar Avisos
         const resAvisos = await fetch('https://api.ipma.pt/open-data/warnings_www.json');
-        avisosAtivos = await resAvisos.json();
+        todosAvisos = await resAvisos.json();
         
-        document.getElementById("data").innerHTML = "Atualizado em: " + new Date().toLocaleString('pt-PT');
+        // 3. Carregar GeoJSON (distritos.geojson deve estar na mesma pasta)
+        const resGeo = await fetch("distritos.geojson");
+        const geoData = await resGeo.json();
 
-        // PASSO C: Carregar o Teu GeoJSON de Distritos
-        // Certifica-te que o ficheiro está na mesma pasta do GitHub
-        const resGeo = await fetch("distritos.geojson"); 
-        const geoJsonData = await resGeo.json();
+        atualizarMapa(0, geoData); // Inicia com "Hoje" (dia 0)
 
-        renderizarMapa(geoJsonData);
+        // Evento para mudar o dia
+        document.getElementById('selecaoDia').addEventListener('change', (e) => {
+            atualizarMapa(parseInt(e.target.value), geoData);
+        });
 
     } catch (err) {
-        document.getElementById("data").innerHTML = "Erro ao carregar dados da API";
+        document.getElementById("data").innerHTML = "Erro ao carregar ficheiros.";
         console.error(err);
     }
 }
 
-function renderizarMapa(dados) {
-    camadaGeo = L.geoJSON(dados, {
+function atualizarMapa(diaOffset, geoData) {
+    if (camadaGeo) map.removeLayer(camadaGeo);
+
+    // Calcular a data alvo
+    const dataAlvo = new Date();
+    dataAlvo.setDate(dataAlvo.getDate() + diaOffset);
+    const dataString = dataAlvo.toISOString().split('T')[0];
+
+    document.getElementById("data").innerHTML = "Avisos para: " + dataAlvo.toLocaleDateString('pt-PT');
+
+    camadaGeo = L.geoJSON(geoData, {
         style: function(feature) {
-            // AJUSTE: Troca 'name' pelo nome da propriedade no teu GeoJSON
-            const nomeNoMapa = feature.properties.name || feature.properties.NOME_1;
-            const nivel = obterNivelMaximo(nomeNoMapa);
-            
+            const nomeDistrito = feature.properties.distrito || feature.properties.name || feature.properties.NOME_1;
+            const nivel = obterNivelMaximo(nomeDistrito, dataString);
             return {
                 fillColor: cores[nivel] || cores['green'],
-                fillOpacity: 0.6,
+                fillOpacity: 0.7,
                 color: "#444",
                 weight: 1
             };
         },
         onEachFeature: function(feature, layer) {
-            const nome = feature.properties.name || feature.properties.NOME_1;
-            const nivel = obterNivelMaximo(nome);
+            const nome = feature.properties.distrito || feature.properties.name || feature.properties.NOME_1;
+            const nivel = obterNivelMaximo(nome, dataString);
             
-            let popupContent = `<strong>${nome}</strong><br>Estado: ${traduzirNivel(nivel)}`;
+            let txt = `<b>${nome}</b><br>Estado: ${traduzir(nivel)}`;
             
-            // Adicionar detalhes se houver aviso
-            const infoAviso = avisosAtivos.find(a => dicionarioDicos[a.idAreaAviso] === nome);
-            if(infoAviso && nivel !== 'green') {
-                popupContent += `<br><small>Aviso: ${infoAviso.awarenessTypeName}</small>`;
+            // Mostrar detalhes do aviso se existir
+            const aviso = todosAvisos.find(a => dicionarioNomes[a.idAreaAviso] === nome && a.startTime.startsWith(dataString));
+            if (aviso && nivel !== 'green') {
+                txt += `<br><small>Tipo: ${aviso.awarenessTypeName}</small>`;
             }
 
-            layer.bindPopup(popupContent);
-            
-            layer.on({
-                mouseover: (e) => { e.target.setStyle({ fillOpacity: 0.8, weight: 2, color: '#fff' }); },
-                mouseout: (e) => { camadaGeo.resetStyle(e.target); }
-            });
+            layer.bindPopup(txt);
+            layer.on('mouseover', (e) => e.target.setStyle({ fillOpacity: 0.9 }));
+            layer.on('mouseout', (e) => e.target.setStyle({ fillOpacity: 0.7 }));
         }
     }).addTo(map);
 }
 
-// Encontra o aviso mais grave para o nome do distrito
-function obterNivelMaximo(nomeDistrito) {
-    let maxNivel = 'green';
-    
-    avisosAtivos.forEach(aviso => {
-        const nomeDaApi = dicionarioDicos[aviso.idAreaAviso];
-        if (nomeDaApi === nomeDistrito) {
-            if (pesos[aviso.awarenessLevelID] > pesos[maxNivel]) {
-                maxNivel = aviso.awarenessLevelID;
+function obterNivelMaximo(nome, dataStr) {
+    let max = 'green';
+    todosAvisos.forEach(aviso => {
+        if (dicionarioNomes[aviso.idAreaAviso] === nome && aviso.startTime.startsWith(dataStr)) {
+            if (pesos[aviso.awarenessLevelID] > pesos[max]) {
+                max = aviso.awarenessLevelID;
             }
         }
     });
-    return maxNivel;
+    return max;
 }
 
-function traduzirNivel(n) {
-    return { 'red': 'Vermelho', 'orange': 'Laranja', 'yellow': 'Amarelo' }[n] || 'Sem Avisos Ativos';
+function traduzir(n) {
+    const t = { 'red': 'Vermelho', 'orange': 'Laranja', 'yellow': 'Amarelo' };
+    return t[n] || 'Sem Avisos';
 }
 
-// Adicionar Legenda
+// Legenda
 const legenda = L.control({position: 'bottomright'});
-legenda.onAdd = function() {
+legenda.onAdd = () => {
     const div = L.DomUtil.create('div', 'legenda');
-    div.innerHTML = `
-        <strong style="margin-bottom:5px; display:block">Avisos Meteorológicos</strong>
+    div.innerHTML = `<b>Avisos IPMA</b><br>
         <i style="background:${cores.red}"></i> Vermelho<br>
         <i style="background:${cores.orange}"></i> Laranja<br>
         <i style="background:${cores.yellow}"></i> Amarelo<br>
-        <i style="background:${cores.green}"></i> Sem Avisos
-    `;
+        <i style="background:${cores.green}"></i> Sem Aviso`;
     return div;
 };
 legenda.addTo(map);
 
-iniciar();
+carregarDados();
 </script>
-
 </body>
 </html>
