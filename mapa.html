@@ -57,11 +57,11 @@ let todasGeometrias = [];
 
 async function carregarTudo() {
     const mapasUrls = {
-        continente: "https://raw.githubusercontent.com/drei/portugal-geojson/master/distritos.geojson",
-        acores_oc: "https://raw.githubusercontent.com/drei/portugal-geojson/master/acores_ocidental.geojson",
-        acores_ce: "https://raw.githubusercontent.com/drei/portugal-geojson/master/acores_central.json",
-        acores_or: "https://raw.githubusercontent.com/drei/portugal-geojson/master/acores_oriental.json",
-        madeira: "https://raw.githubusercontent.com/drei/portugal-geojson/master/madeira.json"
+        // Continente (Distritos)
+        continente: "https://raw.githubusercontent.com/centraldedados/codigos_postais/master/data/concelhos.geojson", 
+        // Nota: Se preferires apenas distritos, este do concelhos funciona mas é mais detalhado.
+        // Vamos usar um link alternativo mais leve para Distritos:
+        distritos: "https://raw.githubusercontent.com/drei/portugal-geojson/master/distritos.geojson" 
     };
 
     try {
