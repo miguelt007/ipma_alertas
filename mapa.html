@@ -3,28 +3,39 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Alertas Meteorológicos IPMA</title>
+    <title>Mapa de Alertas Meteorológicos IPMA</title>
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
     <style>
         body { font-family: Arial; margin: 0; background: #111; color: white; }
         #topbar { background: #222; padding: 12px; text-align: center; border-bottom: 1px solid #444; }
         #titulo { font-size: 22px; font-weight: bold; }
         #data { font-size: 14px; color: #bbb; margin-top: 4px; }
         #map { height: 85vh; width: 100%; }
-        .legenda { background: white; padding: 10px; line-height: 18px; color: #333; box-shadow: 0 0 6px rgba(0,0,0,0.4); border-radius: 4px; }
         
-        /* Cores dos Avisos */
-        .aviso-vermelho { color: #ff3333; font-weight: bold; }
-        .aviso-laranja { color: #ff9900; font-weight: bold; }
-        .aviso-amarelo { color: #ffff00; font-weight: bold; }
-        .aviso-verde { color: #00cc00; }
+        .legenda {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            line-height: 18px;
+            color: #333;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            border-radius: 5px;
+        }
+        .legenda i {
+            width: 14px;
+            height: 14px;
+            display: inline-block;
+            margin-right: 5px;
+            border: 1px solid #333;
+        }
     </style>
 </head>
 <body>
 
 <div id="topbar">
     <div id="titulo">Alertas Meteorológicos IPMA</div>
-    <div id="data">A carregar avisos...</div>
+    <div id="data">A carregar dados oficiais...</div>
 </div>
 
 <div id="map"></div>
@@ -32,117 +43,134 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
+// 1. Configuração Inicial do Mapa
 const map = L.map('map').setView([39.5, -8.0], 7);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '© IPMA | OpenStreetMap'
 }).addTo(map);
 
+// 2. Variáveis de Controlo
 let camadaDistritos;
-let avisosPorDistrito = {};
+let dadosAvisos = [];
+let dicionarioNomes = {};
 
-// Mapeamento de cores IPMA
-function corAviso(nivel) {
+// Cores Oficiais
+function obterCor(nivel) {
     const cores = {
         'red': '#ff3333',
         'orange': '#ff9900',
         'yellow': '#ffff00',
         'green': '#00cc00'
     };
-    return cores[nivel] || "#00cc00";
+    return cores[nivel] || '#00cc00';
 }
 
-function traduzirNivel(nivel) {
+function traduzir(nivel) {
     const nomes = { 'red': 'Vermelho', 'orange': 'Laranja', 'yellow': 'Amarelo', 'green': 'Sem Aviso' };
-    return nomes[nivel] || "Sem dados";
+    return nomes[nivel] || 'Sem Informação';
 }
 
-async function carregarAvisos() {
+// 3. Função Principal de Carregamento
+async function carregarTudo() {
     try {
-        // 1. Ir buscar os avisos à API
-        const resp = await fetch('https://api.ipma.pt/open-data/warnings_www.json');
-        const dados = await resp.json();
-        
-        document.getElementById("data").innerHTML = "Atualizado: " + new Date().toLocaleString('pt-PT');
-
-        // Limpar dados anteriores
-        avisosPorDistrito = {};
-
-        // 2. Processar avisos (Pegar sempre o nível mais grave por distrito)
-        dados.forEach(aviso => {
-            const idArea = aviso.idAreaAviso; // Ex: "LRA", "LIS", "PTO"
-            const nivel = aviso.awarenessLevelID;
-            
-            // Lógica: se já houver um aviso e for menos grave que o atual, ignora
-            if (!avisosPorDistrito[idArea] || pesoNivel(nivel) > pesoNivel(avisosPorDistrito[idArea].nivel)) {
-                avisosPorDistrito[idArea] = {
-                    nivel: nivel,
-                    info: aviso.awarenessTypeName,
-                    descricao: aviso.description
-                };
-            }
+        // Passo A: Carregar nomes dos distritos (a API que indicaste)
+        const resNomes = await fetch('https://api.ipma.pt/open-data/distrits-islands.json');
+        const jsonNomes = await resNomes.json();
+        jsonNomes.data.forEach(item => {
+            dicionarioNomes[item.idAreaAviso] = item.local;
         });
 
-        // 3. Carregar o GeoJSON dos Distritos (ou usar o seu existente)
-        // Nota: Certifique-se que o seu GeoJSON tem uma propriedade que bata com o ID do IPMA (ex: "LIS" para Lisboa)
-        if (!camadaDistritos) {
-            const geo = await fetch("distritos-portugal.geojson"); 
-            const distritos = await geo.json();
+        // Passo B: Carregar Avisos Atuais
+        const resAvisos = await fetch('https://api.ipma.pt/open-data/warnings_www.json');
+        dadosAvisos = await resAvisos.json();
+        
+        document.getElementById("data").innerHTML = "Última Atualização: " + new Date().toLocaleString('pt-PT');
 
-            camadaDistritos = L.geoJSON(distritos, {
-                style: function(feature) {
-                    const id = feature.properties.ID_IPMA; // Ajuste conforme o seu GeoJSON
-                    const aviso = avisosPorDistrito[id] || { nivel: 'green' };
-                    return {
-                        color: "#555",
-                        weight: 1,
-                        fillColor: corAviso(aviso.nivel),
-                        fillOpacity: 0.6
-                    };
-                },
-                onEachFeature: function(feature, layer) {
-                    const id = feature.properties.ID_IPMA;
-                    const aviso = avisosPorDistrito[id] || { nivel: 'green', info: 'Sem avisos ativos' };
-                    
-                    layer.bindPopup(`
-                        <div style='color:#333'>
-                            <b>${feature.properties.NAME_1}</b><br>
-                            Estado: <span style="color:${corAviso(aviso.nivel)}">${traduzirNivel(aviso.nivel)}</span><br>
-                            <i>${aviso.info}</i>
-                        </div>
-                    `);
-                    
-                    layer.on('mouseover', (e) => e.target.setStyle({ fillOpacity: 0.9 }));
-                    layer.on('mouseout', (e) => e.target.setStyle({ fillOpacity: 0.6 }));
-                }
-            }).addTo(map);
-        }
-    } catch (e) {
-        document.getElementById("data").innerHTML = "Erro ao carregar API do IPMA";
-        console.error(e);
+        // Passo C: Carregar o GeoJSON (O teu ficheiro de geometria)
+        const resGeo = await fetch("distritos.geojson"); // MUDAR AQUI se o nome do teu ficheiro for diferente
+        const geoData = await resGeo.json();
+
+        desenharMapa(geoData);
+    } catch (erro) {
+        document.getElementById("data").innerHTML = "Erro ao ligar à API do IPMA";
+        console.error(erro);
     }
 }
 
-function pesoNivel(n) {
-    return { 'red': 3, 'orange': 2, 'yellow': 1, 'green': 0 }[n] || 0;
+// 4. Lógica de Desenho e Atribuição de Cores
+function desenharMapa(geoData) {
+    camadaDistritos = L.geoJSON(geoData, {
+        style: function(feature) {
+            // ATENÇÃO: Confirma se no teu GeoJSON a propriedade é .name ou .NOME_1
+            const nomeDistritoMapa = feature.properties.name; 
+            const nivelGrave = encontrarAvisoGrave(nomeDistritoMapa);
+
+            return {
+                fillColor: obterCor(nivelGrave),
+                fillOpacity: 0.7,
+                color: "#444",
+                weight: 1
+            };
+        },
+        onEachFeature: function(feature, layer) {
+            const nome = feature.properties.name;
+            const nivel = encontrarAvisoGrave(nome);
+            
+            // Criar Popup com detalhes
+            let detalhes = `<b>${nome}</b><br>Estado: ${traduzir(nivel)}`;
+            
+            // Se houver aviso, mostrar o tipo (Chuva, Vento, etc)
+            const avisoInfo = dadosAvisos.find(a => dicionarioNomes[a.idAreaAviso] === nome);
+            if(avisoInfo && nivel !== 'green') {
+                detalhes += `<br><i>Tipo: ${avisoInfo.awarenessTypeName}</i>`;
+            }
+
+            layer.bindPopup(detalhes);
+
+            layer.on({
+                mouseover: (e) => { e.target.setStyle({ fillOpacity: 0.9, weight: 2 }); },
+                mouseout: (e) => { camadaDistritos.resetStyle(e.target); }
+            });
+        }
+    }).addTo(map);
 }
 
-carregarAvisos();
+// Função auxiliar para ver qual o aviso mais perigoso para aquele nome
+function encontrarAvisoGrave(nomeNoMapa) {
+    let nivelMaisAlto = 'green';
+    let pesoMaisAlto = 0;
+    const pesos = { 'red': 3, 'orange': 2, 'yellow': 1, 'green': 0 };
 
-// Legenda
+    dadosAvisos.forEach(aviso => {
+        const nomeDaApi = dicionarioNomes[aviso.idAreaAviso];
+        if (nomeDaApi === nomeNoMapa) {
+            if (pesos[aviso.awarenessLevelID] > pesoMaisAlto) {
+                pesoMaisAlto = pesos[aviso.awarenessLevelID];
+                nivelMaisAlto = aviso.awarenessLevelID;
+            }
+        }
+    });
+    return nivelMaisAlto;
+}
+
+// 5. Adicionar Legenda
 const legenda = L.control({position: 'bottomright'});
 legenda.onAdd = function() {
     const div = L.DomUtil.create('div', 'legenda');
     div.innerHTML = `
-        <b>Avisos IPMA</b><br>
-        <i style="background:#ff3333;width:12px;height:12px;display:inline-block"></i> Vermelho<br>
-        <i style="background:#ff9900;width:12px;height:12px;display:inline-block"></i> Laranja<br>
-        <i style="background:#ffff00;width:12px;height:12px;display:inline-block"></i> Amarelo<br>
-        <i style="background:#00cc00;width:12px;height:12px;display:inline-block"></i> Sem Aviso
+        <b style="display:block; margin-bottom:5px;">Avisos IPMA</b>
+        <i style="background:#ff3333"></i> Vermelho<br>
+        <i style="background:#ff9900"></i> Laranja<br>
+        <i style="background:#ffff00"></i> Amarelo<br>
+        <i style="background:#00cc00"></i> Sem Aviso
     `;
     return div;
 };
 legenda.addTo(map);
+
+// Iniciar
+carregarTudo();
 
 </script>
 </body>
