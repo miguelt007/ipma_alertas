@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alertas Meteorológicos IPMA</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        
+        /* Estilo para o Título e Data */
+        .info-panel {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+            line-height: 18px;
+            color: #333;
+        }
+        
+        /* Legenda */
+        .legend {
+            background: white;
+            padding: 10px;
+            line-height: 24px;
+        }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // 1. Inicializar o mapa (focado em Portugal Continental)
+    const map = L.map('map').setView([39.5, -8.0], 7);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; IPMA | OpenStreetMap'
+    }).addTo(map);
+
+    // 2. Cores Oficiais do IPMA
+    function getColor(level) {
+        return level === 'red'    ? '#ff0000' :
+               level === 'orange' ? '#ffa500' :
+               level === 'yellow' ? '#ffff00' :
+                                    '#00ff00'; // Verde (Sem aviso)
+    }
+
+    // 3. Adicionar Painel de Título e Data
+    const info = L.control({position: 'topright'});
+    info.onAdd = function (map) {
+        this._div = L.DomUtil.create('div', 'info-panel');
+        this.update();
+        return this._div;
+    };
+    info.update = function (props) {
+        const date = new Date().toLocaleString('pt-PT');
+        this._div.innerHTML = `<h4>Alertas Meteorológicos</h4><b>Última atualização:</b> ${date}`;
+    };
+    info.addTo(map);
+
+    // 4. Lógica da API (Simplificada)
+    // Nota: Você precisará de um ficheiro GeoJSON dos distritos de Portugal
+    // para pintar as cores, pois a API do IPMA dá apenas os dados, não a geometria.
+    
+    async function getAlerts() {
+        try {
+            const response = await fetch('https://api.ipma.pt/open-data/warnings_www.json');
+            const data = await response.json();
+            
+            // Aqui você cruzaria o ID do distrito da API com o seu GeoJSON
+            console.log("Dados do IPMA:", data);
+            
+            // Exemplo de como iterar nos avisos:
+            data.forEach(aviso => {
+                // Lógica para colorir o mapa baseada em aviso.awarenessLevelID
+            });
+        } catch (error) {
+            console.error("Erro ao carregar API:", error);
+        }
+    }
+
+    getAlerts();
+
+</script>
+</body>
+</html>
