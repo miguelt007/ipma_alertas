@@ -3,51 +3,50 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mapa IPMA - Portugal e Açores</title>
+    <title>Avisos IPMA - Portugal Completo</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #111; color: white; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #111; color: white; }
         #topbar { background: #222; padding: 15px; text-align: center; border-bottom: 2px solid #444; }
-        #map { height: 85vh; width: 100%; background: #1a1a1a; }
-        .legenda { background: white; padding: 10px; color: #333; border-radius: 8px; font-size: 12px; line-height: 18px; }
+        #map { height: 80vh; width: 100%; background: #1a1a1a; }
+        .controles { margin-top: 10px; }
+        button { padding: 5px 12px; margin: 2px; cursor: pointer; background: #444; color: white; border: 1px solid #666; border-radius: 4px; }
+        button:hover { background: #666; }
+        .legenda { background: white; padding: 10px; color: #333; border-radius: 8px; font-size: 12px; }
         .legenda i { width: 14px; height: 14px; float: left; margin-right: 8px; border: 1px solid #999; }
-        select { padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <div id="topbar">
-    <div style="font-size:20px; font-weight:bold;">ALERTA METEOROLÓGICO IPMA</div>
-    <div id="status" style="font-size:13px; color:#aaa; margin: 5px 0;">A carregar mapas e avisos...</div>
-    <select id="selecaoDia">
-        <option value="0">HOJE</option>
-        <option value="1">AMANHÃ</option>
-        <option value="2">DEPOIS DE AMANHÃ</option>
-    </select>
+    <div style="font-size:18px; font-weight:bold;">SISTEMA DE AVISOS IPMA</div>
+    <div id="status" style="font-size:12px; color:#aaa;">A carregar mapas...</div>
+    
+    <div class="controles">
+        <select id="selecaoDia">
+            <option value="0">HOJE</option>
+            <option value="1">AMANHÃ</option>
+            <option value="2">DEPOIS DE AMANHÃ</option>
+        </select>
+        | Ir para:
+        <button onclick="map.setView([39.5, -8.0], 7)">Continente</button>
+        <button onclick="map.setView([38.5, -28.0], 7)">Açores</button>
+        <button onclick="map.setView([32.7, -16.9], 10)">Madeira</button>
+    </div>
 </div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-// Configuração do Mapa (Centrado para apanhar o Atlântico)
-const map = L.map('map').setView([38.5, -15.0], 5); 
+const map = L.map('map').setView([39.5, -8.0], 6);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
+// Mapeamento exato IPMA -> Nomes dos GeoJSONs
 const areaInfo = {
-    // Continente
-    "AVR": "Aveiro", "BJA": "Beja", "BRG": "Braga", "BGC": "Bragança",
-    "CBO": "Castelo Branco", "CBR": "Coimbra", "EVR": "Évora", "FAR": "Faro",
-    "GDA": "Guarda", "LRA": "Leiria", "LSB": "Lisboa", "PTG": "Portalegre",
-    "PTO": "Porto", "STM": "Santarém", "STB": "Setúbal", "VCT": "Viana do Castelo",
-    "VRL": "Vila Real", "VIS": "Viseu",
-    // Açores (Mapeamento para os teus novos ficheiros)
-    "AOC": "Açores (Grupo Ocidental)", "ACZ": "Açores (Grupo Ocidental)",
-    "ACE": "Açores (Grupo Central)", "ACG": "Açores (Grupo Central)",
-    "AOR": "Açores (Grupo Oriental)", "ACL": "Açores (Grupo Oriental)",
-    // Madeira
-    "MCN": "Madeira (Costa Norte)", "MRM": "Madeira (Regiões Montanhosas)",
-    "MCS": "Madeira (Costa Sul)", "MPS": "Madeira (Porto Santo)"
+    "AVR":"Aveiro","BJA":"Beja","BRG":"Braga","BGC":"Bragança","CBO":"Castelo Branco","CBR":"Coimbra","EVR":"Évora","FAR":"Faro","GDA":"Guarda","LRA":"Leiria","LSB":"Lisboa","PTG":"Portalegre","PTO":"Porto","STM":"Santarém","STB":"Setúbal","VCT":"Viana do Castelo","VRL":"Vila Real","VIS":"Viseu",
+    "AOC":"Açores (Grupo Ocidental)","ACZ":"Açores (Grupo Ocidental)","ACE":"Açores (Grupo Central)","ACG":"Açores (Grupo Central)","AOR":"Açores (Grupo Oriental)","ACL":"Açores (Grupo Oriental)",
+    "MCN":"Madeira (Costa Norte)","MRM":"Madeira (Regiões Montanhosas)","MCS":"Madeira (Costa Sul)","MPS":"Madeira (Porto Santo)"
 };
 
 const cores = { 'red': '#ff3333', 'orange': '#ff9900', 'yellow': '#ffff00', 'green': '#2ecc71' };
@@ -57,58 +56,57 @@ let dadosAvisos = [];
 let todasGeometrias = [];
 
 async function carregarTudo() {
+    const mapasUrls = {
+        continente: "https://raw.githubusercontent.com/drei/portugal-geojson/master/distritos.geojson",
+        acores_oc: "https://raw.githubusercontent.com/drei/portugal-geojson/master/acores_ocidental.geojson",
+        acores_ce: "https://raw.githubusercontent.com/drei/portugal-geojson/master/acores_central.json",
+        acores_or: "https://raw.githubusercontent.com/drei/portugal-geojson/master/acores_oriental.json",
+        madeira: "https://raw.githubusercontent.com/drei/portugal-geojson/master/madeira.json"
+    };
+
     try {
-        // 1. Carregar Avisos (URL da tua tabela)
         const resAvisos = await fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json');
         dadosAvisos = await resAvisos.json();
 
-        // 2. Carregar todos os GeoJSONs ao mesmo tempo
-        const ficheiros = [
-            'distritos.geojson',
-            'AcoresCentralIlhas.geojson',
-            'AcoresOcidentalIlhas.geojson',
-            'AcoresOrientalIlhas.geojson'
-        ];
+        for (const key in mapasUrls) {
+            try {
+                const res = await fetch(mapasUrls[key]);
+                const data = await res.json();
+                todasGeometrias = todasGeometrias.concat(data.features);
+            } catch (e) { console.error("Falha ao carregar " + key); }
+        }
 
-        const respostas = await Promise.all(ficheiros.map(f => fetch(f).then(r => r.json())));
-        
-        // Juntar todas as "features" num único array
-        todasGeometrias = respostas.flatMap(json => json.features);
-
-        renderizarMapa(0);
-        document.getElementById('selecaoDia').onchange = (e) => renderizarMapa(e.target.value);
+        renderizar(0);
+        document.getElementById("status").innerHTML = "Ligado ao IPMA - Todos os distritos e ilhas carregados.";
+        document.getElementById('selecaoDia').onchange = (e) => renderizar(e.target.value);
 
     } catch (err) {
-        document.getElementById("status").innerHTML = "Erro ao carregar ficheiros GeoJSON ou API.";
-        console.error(err);
+        document.getElementById("status").innerHTML = "Erro de ligação ao IPMA.";
     }
 }
 
-function renderizarMapa(diaIdx) {
+function renderizar(diaIdx) {
     const dataAlvo = new Date();
     dataAlvo.setDate(dataAlvo.getDate() + parseInt(diaIdx));
     const dataStr = dataAlvo.toISOString().split('T')[0];
-    document.getElementById("status").innerHTML = "Avisos para: " + dataAlvo.toLocaleDateString('pt-PT');
 
     if (window.camada) map.removeLayer(window.camada);
 
-    // Criamos a camada com todas as geometrias juntas
     window.camada = L.geoJSON(todasGeometrias, {
         style: function(f) {
-            // Verificamos o nome no GeoJSON (Pode ser 'distrito', 'name' ou 'Nome')
             const nome = (f.properties.distrito || f.properties.name || f.properties.Distrito || f.properties.Nome || "").trim();
-            const nivel = obterRisco(nome, dataStr);
+            const nivel = obterNivel(nome, dataStr);
             return { fillColor: cores[nivel], fillOpacity: 0.7, color: "#444", weight: 1 };
         },
         onEachFeature: function(f, l) {
             const nome = (f.properties.distrito || f.properties.name || f.properties.Distrito || f.properties.Nome || "").trim();
-            const nivel = obterRisco(nome, dataStr);
+            const nivel = obterNivel(nome, dataStr);
             l.bindPopup(`<b>${nome}</b><br>Alerta: ${nivel.toUpperCase()}`);
         }
     }).addTo(map);
 }
 
-function obterRisco(nomeMapa, dataStr) {
+function obterNivel(nomeMapa, dataStr) {
     let max = 'green';
     dadosAvisos.forEach(a => {
         const nomeIPMA = areaInfo[a.idAreaAviso] || "";
@@ -119,13 +117,11 @@ function obterRisco(nomeMapa, dataStr) {
     return max;
 }
 
-// Legenda
+// Legenda básica
 const legend = L.control({position: 'bottomright'});
 legend.onAdd = () => {
     const div = L.DomUtil.create('div', 'legenda');
-    div.innerHTML = '<b>Avisos IPMA</b><br>' +
-        '<i style="background:#ff3333"></i> Vermelho<br><i style="background:#ff9900"></i> Laranja<br>' +
-        '<i style="background:#ffff00"></i> Amarelo<br><i style="background:#2ecc71"></i> Sem Risco';
+    div.innerHTML = '<b>Avisos</b><br><i style="background:#ff3333"></i>Vermelho<br><i style="background:#ff9900"></i>Laranja<br><i style="background:#ffff00"></i>Amarelo<br><i style="background:#2ecc71"></i>Verde';
     return div;
 };
 legend.addTo(map);
