@@ -17,7 +17,7 @@
 
 <div id="topbar">
     <div id="titulo" style="font-size:20px; font-weight:bold;">Alertas Meteorológicos IPMA</div>
-    <div id="info-data" style="color:#bbb; margin-top:5px;">A carregar dados oficiais...</div>
+    <div id="info-data" style="color:#bbb; margin-top:5px;">A carregar dados...</div>
     <select id="selecaoDia" style="margin-top:10px; padding:5px;">
         <option value="0">Hoje</option>
         <option value="1">Amanhã</option>
@@ -31,29 +31,31 @@
 <script>
 // 1. Configurar Mapa
 const map = L.map('map').setView([39.5, -8.0], 7);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© IPMA | OpenStreetMap'
+}).addTo(map);
 
 const cores = { 'red': '#ff3333', 'orange': '#ff9900', 'yellow': '#ffff00', 'green': '#2ecc71' };
 const pesos = { 'red': 3, 'orange': 2, 'yellow': 1, 'green': 0 };
 
 let dadosAvisos = [];
-let nomesIPMA = {}; // Objeto para cruzar ID -> Nome
+let nomesIPMA = {}; 
 
 async function inicializar() {
     try {
-        // A. Obter nomes dos distritos (API que enviaste)
+        // A. API Nomes (CORS Proxy se necessário, mas IPMA costuma aceitar)
         const resNomes = await fetch('https://api.ipma.pt/open-data/distrits-islands.json');
         const jsonNomes = await resNomes.json();
         jsonNomes.data.forEach(item => {
             nomesIPMA[item.idAreaAviso] = item.local.toUpperCase();
         });
 
-        // B. Obter Avisos
+        // B. API Avisos
         const resAvisos = await fetch('https://api.ipma.pt/open-data/warnings_www.json');
         dadosAvisos = await resAvisos.json();
 
-        // C. Obter Coordenadas (Link externo para evitar erro de "File Not Found")
-        const resGeo = await fetch('https://raw.githubusercontent.com/drei/portugal-geojson/master/distritos.geojson');
+        // C. O Teu GeoJSON (Certifica-te que o nome do ficheiro está exato)
+        const resGeo = await fetch('distritos.geojson');
         const geoJson = await resGeo.json();
 
         function renderizar(diaIdx) {
@@ -61,19 +63,19 @@ async function inicializar() {
             dataAlvo.setDate(dataAlvo.getDate() + parseInt(diaIdx));
             const dataStr = dataAlvo.toISOString().split('T')[0];
             
-            document.getElementById("info-data").innerHTML = "Avisos para: " + dataAlvo.toLocaleDateString('pt-PT');
+            document.getElementById("info-data").innerHTML = "Previsão para: " + dataAlvo.toLocaleDateString('pt-PT');
 
             if (window.camada) map.removeLayer(window.camada);
 
             window.camada = L.geoJSON(geoJson, {
                 style: function(feature) {
-                    // Cruzamento: Nome no GeoJSON vs Nome na API do IPMA
-                    const nomeMapa = feature.properties.distrito.toUpperCase();
+                    // AJUSTE: Aqui lemos a propriedade "Distrito" ou "distrito" do teu ficheiro
+                    const nomeMapa = (feature.properties.Distrito || feature.properties.distrito || "").toUpperCase();
                     const nivel = buscarNivelGrave(nomeMapa, dataStr);
-                    return { fillColor: cores[nivel], fillOpacity: 0.7, color: "#444", weight: 1 };
+                    return { fillColor: cores[nivel] || cores['green'], fillOpacity: 0.7, color: "#444", weight: 1 };
                 },
                 onEachFeature: function(feature, layer) {
-                    const nome = feature.properties.distrito.toUpperCase();
+                    const nome = (feature.properties.Distrito || feature.properties.distrito || "").toUpperCase();
                     const nivel = buscarNivelGrave(nome, dataStr);
                     layer.bindPopup(`<b>${nome}</b><br>Aviso: ${nivel.toUpperCase()}`);
                 }
@@ -84,15 +86,14 @@ async function inicializar() {
         document.getElementById('selecaoDia').onchange = (e) => renderizar(e.target.value);
 
     } catch (err) {
-        console.error(err);
-        document.getElementById("info-data").innerHTML = "Erro ao carregar APIs do IPMA.";
+        console.error("Erro detalhado:", err);
+        document.getElementById("info-data").innerHTML = "Erro ao carregar dados. Se estiveres no PC, sobe para o GitHub para testar.";
     }
 }
 
 function buscarNivelGrave(nomeDistrito, dataStr) {
     let max = 'green';
     dadosAvisos.forEach(a => {
-        // Se o nome do distrito na API (via dicionário) for igual ao do mapa
         if (nomesIPMA[a.idAreaAviso] === nomeDistrito && a.startTime.startsWith(dataStr)) {
             if (pesos[a.awarenessLevelID] > pesos[max]) max = a.awarenessLevelID;
         }
