@@ -99,10 +99,12 @@ function renderizar(diaIdx) {
             return { fillColor: cores[nivel], fillOpacity: 0.7, color: "#444", weight: 1 };
         },
         onEachFeature: function(f, l) {
-            const nome = (f.properties.distrito || f.properties.name || f.properties.Distrito || f.properties.Nome || "").trim();
-            const nivel = obterNivel(nome, dataStr);
-            l.bindPopup(`<b>${nome}</b><br>Alerta: ${nivel.toUpperCase()}`);
-        }
+    const nomeOriginal = f.properties.distrito || f.properties.name || f.properties.Distrito || f.properties.Nome || "SEM NOME";
+    console.log("O mapa leu este nome:", nomeOriginal); // Isto vai aparecer no F12
+    
+    const nivel = obterNivel(nomeOriginal, dataStr);
+    l.bindPopup(`<b>${nomeOriginal}</b><br>Alerta: ${nivel.toUpperCase()}`);
+}
     }).addTo(map);
 }
 
