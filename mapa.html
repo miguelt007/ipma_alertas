@@ -6,29 +6,29 @@
     <title>Avisos IPMA - Portugal Completo</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #111; color: white; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #111; color: white; }
         #topbar { background: #222; padding: 15px; text-align: center; border-bottom: 2px solid #444; }
         #map { height: 80vh; width: 100%; background: #1a1a1a; }
         .controles { margin-top: 10px; }
-        button { padding: 5px 12px; margin: 2px; cursor: pointer; background: #444; color: white; border: 1px solid #666; border-radius: 4px; }
+        button { padding: 6px 12px; margin: 2px; cursor: pointer; background: #444; color: white; border: 1px solid #666; border-radius: 4px; }
         button:hover { background: #666; }
-        .legenda { background: white; padding: 10px; color: #333; border-radius: 8px; font-size: 12px; }
+        .legenda { background: rgba(255,255,255,0.9); padding: 10px; color: #333; border-radius: 8px; font-size: 12px; line-height: 18px; }
         .legenda i { width: 14px; height: 14px; float: left; margin-right: 8px; border: 1px solid #999; }
+        select { padding: 6px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
     </style>
 </head>
 <body>
 
 <div id="topbar">
-    <div style="font-size:18px; font-weight:bold;">SISTEMA DE AVISOS IPMA</div>
-    <div id="status" style="font-size:12px; color:#aaa;">A carregar mapas...</div>
+    <div style="font-size:20px; font-weight:bold;">ALERTA METEOROLÓGICO IPMA</div>
+    <div id="status" style="font-size:12px; color:#aaa; margin: 5px 0;">A ligar aos sistemas...</div>
     
     <div class="controles">
         <select id="selecaoDia">
-            <option value="0">HOJE</option>
-            <option value="1">AMANHÃ</option>
-            <option value="2">DEPOIS DE AMANHÃ</option>
+            <option value="0">Previsão para HOJE</option>
+            <option value="1">Previsão para AMANHÃ</option>
+            <option value="2">Depois de AMANHÃ</option>
         </select>
-        | Ir para:
         <button onclick="map.setView([39.5, -8.0], 7)">Continente</button>
         <button onclick="map.setView([38.5, -28.0], 7)">Açores</button>
         <button onclick="map.setView([32.7, -16.9], 10)">Madeira</button>
@@ -40,9 +40,11 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 const map = L.map('map').setView([39.5, -8.0], 6);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© IPMA | OpenStreetMap'
+}).addTo(map);
 
-// Mapeamento exato IPMA -> Nomes dos GeoJSONs
+// Mapeamento Identificadores IPMA -> Nomes nos ficheiros GeoJSON
 const areaInfo = {
     "AVR":"Aveiro","BJA":"Beja","BRG":"Braga","BGC":"Bragança","CBO":"Castelo Branco","CBR":"Coimbra","EVR":"Évora","FAR":"Faro","GDA":"Guarda","LRA":"Leiria","LSB":"Lisboa","PTG":"Portalegre","PTO":"Porto","STM":"Santarém","STB":"Setúbal","VCT":"Viana do Castelo","VRL":"Vila Real","VIS":"Viseu",
     "AOC":"Açores (Grupo Ocidental)","ACZ":"Açores (Grupo Ocidental)","ACE":"Açores (Grupo Central)","ACG":"Açores (Grupo Central)","AOR":"Açores (Grupo Oriental)","ACL":"Açores (Grupo Oriental)",
@@ -55,33 +57,38 @@ const pesos = { 'red': 3, 'orange': 2, 'yellow': 1, 'green': 0 };
 let dadosAvisos = [];
 let todasGeometrias = [];
 
+// Função para remover acentos e comparar nomes de forma segura
+function normalizar(str) {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+}
+
 async function carregarTudo() {
-    const mapasUrls = {
-        // Continente (Distritos)
-        continente: "https://raw.githubusercontent.com/centraldedados/codigos_postais/master/data/concelhos.geojson", 
-        // Nota: Se preferires apenas distritos, este do concelhos funciona mas é mais detalhado.
-        // Vamos usar um link alternativo mais leve para Distritos:
-        distritos: "https://raw.githubusercontent.com/drei/portugal-geojson/master/distritos.geojson" 
-    };
+    const mapasUrls = [
+        "https://raw.githubusercontent.com/tglopes/portugal-geojson/master/distritos.geojson",
+        "https://raw.githubusercontent.com/tglopes/portugal-geojson/master/acores.geojson",
+        "https://raw.githubusercontent.com/tglopes/portugal-geojson/master/madeira.geojson"
+    ];
 
     try {
+        // 1. Obter Avisos (URL da tua tabela)
         const resAvisos = await fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json');
         dadosAvisos = await resAvisos.json();
 
-        for (const key in mapasUrls) {
+        // 2. Obter Geometrias
+        for (const url of mapasUrls) {
             try {
-                const res = await fetch(mapasUrls[key]);
+                const res = await fetch(url);
                 const data = await res.json();
                 todasGeometrias = todasGeometrias.concat(data.features);
-            } catch (e) { console.error("Falha ao carregar " + key); }
+            } catch (e) { console.error("Erro ao carregar mapa: " + url); }
         }
 
         renderizar(0);
-        document.getElementById("status").innerHTML = "Ligado ao IPMA - Todos os distritos e ilhas carregados.";
+        document.getElementById("status").innerHTML = "Dados IPMA carregados com sucesso.";
         document.getElementById('selecaoDia').onchange = (e) => renderizar(e.target.value);
 
     } catch (err) {
-        document.getElementById("status").innerHTML = "Erro de ligação ao IPMA.";
+        document.getElementById("status").innerHTML = "Erro ao carregar dados do IPMA.";
     }
 }
 
@@ -94,36 +101,40 @@ function renderizar(diaIdx) {
 
     window.camada = L.geoJSON(todasGeometrias, {
         style: function(f) {
-            const nome = (f.properties.distrito || f.properties.name || f.properties.Distrito || f.properties.Nome || "").trim();
-            const nivel = obterNivel(nome, dataStr);
-            return { fillColor: cores[nivel], fillOpacity: 0.7, color: "#444", weight: 1 };
+            const nomeMapa = f.properties.name || f.properties.distrito || f.properties.Distrito || f.properties.Nome || "";
+            const nivel = obterNivel(nomeMapa, dataStr);
+            return { fillColor: cores[nivel], fillOpacity: 0.7, color: "#222", weight: 1.5 };
         },
         onEachFeature: function(f, l) {
-    const nomeOriginal = f.properties.distrito || f.properties.name || f.properties.Distrito || f.properties.Nome || "SEM NOME";
-    console.log("O mapa leu este nome:", nomeOriginal); // Isto vai aparecer no F12
-    
-    const nivel = obterNivel(nomeOriginal, dataStr);
-    l.bindPopup(`<b>${nomeOriginal}</b><br>Alerta: ${nivel.toUpperCase()}`);
-}
+            const nomeMapa = f.properties.name || f.properties.distrito || f.properties.Distrito || f.properties.Nome || "";
+            const nivel = obterNivel(nomeMapa, dataStr);
+            l.bindPopup(`<b>${nomeMapa}</b><br>Alerta: <span style="color:${cores[nivel]}">${nivel.toUpperCase()}</span>`);
+        }
     }).addTo(map);
 }
 
 function obterNivel(nomeMapa, dataStr) {
     let max = 'green';
+    const nomeMapaNorm = normalizar(nomeMapa);
+
     dadosAvisos.forEach(a => {
-        const nomeIPMA = areaInfo[a.idAreaAviso] || "";
-        if (nomeIPMA.toUpperCase() === nomeMapa.toUpperCase() && a.startTime.startsWith(dataStr)) {
+        const nomeOficialIPMA = areaInfo[a.idAreaAviso] || "";
+        if (normalizar(nomeOficialIPMA) === nomeMapaNorm && a.startTime.startsWith(dataStr)) {
             if (pesos[a.awarenessLevelID] > pesos[max]) max = a.awarenessLevelID;
         }
     });
     return max;
 }
 
-// Legenda básica
+// Adicionar Legenda
 const legend = L.control({position: 'bottomright'});
 legend.onAdd = () => {
     const div = L.DomUtil.create('div', 'legenda');
-    div.innerHTML = '<b>Avisos</b><br><i style="background:#ff3333"></i>Vermelho<br><i style="background:#ff9900"></i>Laranja<br><i style="background:#ffff00"></i>Amarelo<br><i style="background:#2ecc71"></i>Verde';
+    div.innerHTML = '<b>Risco Meteorológico</b><br>' +
+        '<i style="background:#ff3333"></i> Vermelho<br>' +
+        '<i style="background:#ff9900"></i> Laranja<br>' +
+        '<i style="background:#ffff00"></i> Amarelo<br>' +
+        '<i style="background:#2ecc71"></i> Sem Aviso';
     return div;
 };
 legend.addTo(map);
