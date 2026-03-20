@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mapa Alertas IPMA</title>
+    <title>IPMA - Alertas Meteorológicos</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #111; color: white; overflow: hidden; }
@@ -26,7 +26,6 @@
         .popup-titulo { font-size: 16px; border-bottom: 1px solid #444; margin-bottom: 10px; padding-bottom: 5px; display: block; color: #fff; }
         .aviso-linha { margin-bottom: 8px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
         
-        /* Classe para os teus ícones SVG */
         .aviso-img { width: 22px; height: 22px; vertical-align: middle; }
 
         .legenda { 
@@ -39,7 +38,7 @@
 <body>
 
 <div id="topbar">
-    <div style="font-size: 18px; font-weight: bold; letter-spacing: 1px;">ALERTAS METEO</div>
+    <div style="font-size: 18px; font-weight: bold; letter-spacing: 1px;">IPMA - Alertas Meteorológicos</div>
     <div class="grupo-botoes">
         <button class="btn-dia active" onclick="mudarDia(0, this)">HOJE</button>
         <button class="btn-dia" onclick="mudarDia(1, this)">AMANHÃ</button>
@@ -61,17 +60,17 @@ const traducaoNivel = { 'green': 'Sem Aviso', 'yellow': 'Amarelo', 'orange': 'La
 const cores = { 'green': '#2ecc71', 'yellow': '#ffff00', 'orange': '#ff9900', 'red': '#ff3333' };
 const pesos = { 'green': 0, 'yellow': 1, 'orange': 2, 'red': 3 };
 
-// Mapeamento para os teus ícones SVG na pasta /icons/
+// Mapeamento para os teus ícones SVG com a primeira letra Maiúscula
 const iconesAviso = {
-    "Precipitação": "chuva.svg",
-    "Vento": "vento.svg",
-    "Agitação Marítima": "mar.svg",
-    "Neve": "neve.svg",
-    "Trovoada": "trovoada.svg",
-    "Nevoeiro": "nevoeiro.svg",
-    "Tempo Quente": "calor.svg",
-    "Tempo Frio": "frio.svg",
-    "default": "alerta.svg"
+    "Precipitação": "Chuva.svg",
+    "Vento": "Vento.svg",
+    "Agitação Marítima": "Mar.svg",
+    "Neve": "Neve.svg",
+    "Trovoada": "Trovoada.svg",
+    "Nevoeiro": "Nevoeiro.svg",
+    "Tempo Quente": "Calor.svg",
+    "Tempo Frio": "Frio.svg",
+    "default": "Alerta.svg"
 };
 
 const map = L.map('map', { zoomSnap: 0.1 }).setView([39.6, -8.1], 6.2);
@@ -116,7 +115,7 @@ function renderizar(diaIdx) {
                     const nomeImg = iconesAviso[d.tipo] || iconesAviso["default"];
                     htmlPopup += `<div class="aviso-linha">
                         <img src="icons/${nomeImg}" class="aviso-img" alt="${d.tipo}"> 
-                        <span style="color:${cores[d.nivel]}; font-weight:bold;">${d.tipo}: ${traducaoNivel[d.nivel]}</span>
+                        <span style="color:${cores[d.nivel] === '#ffff00' ? '#e6e600' : cores[d.nivel]}; font-weight:bold;">${d.tipo}: ${traducaoNivel[d.nivel]}</span>
                     </div>`;
                 });
             } else {
