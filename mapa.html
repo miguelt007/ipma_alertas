@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Avisos IPMA - Portugal Completo</title>
+    <title>Avisos IPMA - Portugal Total</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #111; color: white; }
@@ -20,7 +20,7 @@
 <body>
 
 <div id="topbar">
-    <div style="font-size:20px; font-weight:bold;">ALERTA METEOROLÓGICO IPMA</div>
+    <div style="font-size:20px; font-weight:bold;">SISTEMA DE AVISOS IPMA</div>
     <div id="status" style="font-size:12px; color:#aaa; margin: 5px 0;">A ligar aos sistemas...</div>
     
     <div class="controles">
@@ -40,15 +40,13 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 const map = L.map('map').setView([39.5, -8.0], 6);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© IPMA | OpenStreetMap'
-}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
-// Mapeamento Identificadores IPMA -> Nomes nos ficheiros GeoJSON
+// Mapeamento Identificadores IPMA -> Nomes que aparecem nos GeoJSONs (NAME_1)
 const areaInfo = {
     "AVR":"Aveiro","BJA":"Beja","BRG":"Braga","BGC":"Bragança","CBO":"Castelo Branco","CBR":"Coimbra","EVR":"Évora","FAR":"Faro","GDA":"Guarda","LRA":"Leiria","LSB":"Lisboa","PTG":"Portalegre","PTO":"Porto","STM":"Santarém","STB":"Setúbal","VCT":"Viana do Castelo","VRL":"Vila Real","VIS":"Viseu",
-    "AOC":"Açores (Grupo Ocidental)","ACZ":"Açores (Grupo Ocidental)","ACE":"Açores (Grupo Central)","ACG":"Açores (Grupo Central)","AOR":"Açores (Grupo Oriental)","ACL":"Açores (Grupo Oriental)",
-    "MCN":"Madeira (Costa Norte)","MRM":"Madeira (Regiões Montanhosas)","MCS":"Madeira (Costa Sul)","MPS":"Madeira (Porto Santo)"
+    "AOC":"Azores","ACZ":"Azores","ACE":"Azores","ACG":"Azores","AOR":"Azores","ACL":"Azores",
+    "MCN":"Madeira","MRM":"Madeira","MCS":"Madeira","MPS":"Madeira"
 };
 
 const cores = { 'red': '#ff3333', 'orange': '#ff9900', 'yellow': '#ffff00', 'green': '#2ecc71' };
@@ -57,38 +55,37 @@ const pesos = { 'red': 3, 'orange': 2, 'yellow': 1, 'green': 0 };
 let dadosAvisos = [];
 let todasGeometrias = [];
 
-// Função para remover acentos e comparar nomes de forma segura
 function normalizar(str) {
+    if (!str) return "";
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
 }
 
 async function carregarTudo() {
+    // Links verificados do dev-mms (Ativos em 2026)
     const mapasUrls = [
-        "https://raw.githubusercontent.com/tglopes/portugal-geojson/master/distritos.geojson",
-        "https://raw.githubusercontent.com/tglopes/portugal-geojson/master/acores.geojson",
-        "https://raw.githubusercontent.com/tglopes/portugal-geojson/master/madeira.geojson"
+        "https://raw.githubusercontent.com/dev-mms/portugal-geojson/master/data/distritos.geojson",
+        "https://raw.githubusercontent.com/dev-mms/portugal-geojson/master/data/acores.geojson",
+        "https://raw.githubusercontent.com/dev-mms/portugal-geojson/master/data/madeira.geojson"
     ];
 
     try {
-        // 1. Obter Avisos (URL da tua tabela)
         const resAvisos = await fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json');
         dadosAvisos = await resAvisos.json();
 
-        // 2. Obter Geometrias
         for (const url of mapasUrls) {
             try {
                 const res = await fetch(url);
                 const data = await res.json();
                 todasGeometrias = todasGeometrias.concat(data.features);
-            } catch (e) { console.error("Erro ao carregar mapa: " + url); }
+            } catch (e) { console.error("Falha ao carregar: " + url); }
         }
 
         renderizar(0);
-        document.getElementById("status").innerHTML = "Dados IPMA carregados com sucesso.";
+        document.getElementById("status").innerHTML = "Ligado ao IPMA - Mapas Carregados.";
         document.getElementById('selecaoDia').onchange = (e) => renderizar(e.target.value);
 
     } catch (err) {
-        document.getElementById("status").innerHTML = "Erro ao carregar dados do IPMA.";
+        document.getElementById("status").innerHTML = "Erro ao carregar dados.";
     }
 }
 
@@ -101,12 +98,13 @@ function renderizar(diaIdx) {
 
     window.camada = L.geoJSON(todasGeometrias, {
         style: function(f) {
-            const nomeMapa = f.properties.name || f.properties.distrito || f.properties.Distrito || f.properties.Nome || "";
+            // Tenta NAME_1 (comum no dev-mms) ou outras variantes
+            const nomeMapa = f.properties.NAME_1 || f.properties.name || f.properties.distrito || f.properties.Distrito || "";
             const nivel = obterNivel(nomeMapa, dataStr);
-            return { fillColor: cores[nivel], fillOpacity: 0.7, color: "#222", weight: 1.5 };
+            return { fillColor: cores[nivel], fillOpacity: 0.7, color: "#222", weight: 1.2 };
         },
         onEachFeature: function(f, l) {
-            const nomeMapa = f.properties.name || f.properties.distrito || f.properties.Distrito || f.properties.Nome || "";
+            const nomeMapa = f.properties.NAME_1 || f.properties.name || f.properties.distrito || f.properties.Distrito || "";
             const nivel = obterNivel(nomeMapa, dataStr);
             l.bindPopup(`<b>${nomeMapa}</b><br>Alerta: <span style="color:${cores[nivel]}">${nivel.toUpperCase()}</span>`);
         }
@@ -118,23 +116,19 @@ function obterNivel(nomeMapa, dataStr) {
     const nomeMapaNorm = normalizar(nomeMapa);
 
     dadosAvisos.forEach(a => {
-        const nomeOficialIPMA = areaInfo[a.idAreaAviso] || "";
-        if (normalizar(nomeOficialIPMA) === nomeMapaNorm && a.startTime.startsWith(dataStr)) {
+        const nomeIPMA = areaInfo[a.idAreaAviso] || "";
+        // Se o nome no mapa for "AZORES" (NAME_1) e no IPMA for "AZORES" (areaInfo)
+        if (normalizar(nomeIPMA) === nomeMapaNorm && a.startTime.startsWith(dataStr)) {
             if (pesos[a.awarenessLevelID] > pesos[max]) max = a.awarenessLevelID;
         }
     });
     return max;
 }
 
-// Adicionar Legenda
 const legend = L.control({position: 'bottomright'});
 legend.onAdd = () => {
     const div = L.DomUtil.create('div', 'legenda');
-    div.innerHTML = '<b>Risco Meteorológico</b><br>' +
-        '<i style="background:#ff3333"></i> Vermelho<br>' +
-        '<i style="background:#ff9900"></i> Laranja<br>' +
-        '<i style="background:#ffff00"></i> Amarelo<br>' +
-        '<i style="background:#2ecc71"></i> Sem Aviso';
+    div.innerHTML = '<b>Risco IPMA</b><br><i style="background:#ff3333"></i>Vermelho<br><i style="background:#ff9900"></i>Laranja<br><i style="background:#ffff00"></i>Amarelo<br><i style="background:#2ecc71"></i>Sem Aviso';
     return div;
 };
 legend.addTo(map);
