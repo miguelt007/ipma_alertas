@@ -7,31 +7,17 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #111; color: white; overflow: hidden; }
-        #topbar { 
-            background: #222; padding: 12px 20px; display: flex; align-items: center; 
-            justify-content: space-between; border-bottom: 2px solid #444; 
-        }
+        #topbar { background: #222; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #444; }
         #map { height: calc(100vh - 60px); width: 100%; background: #1a1a1a; }
-        
         .grupo-botoes { display: flex; gap: 8px; }
-        .btn-dia { 
-            padding: 8px 15px; background: #333; color: white; border: 1px solid #555; 
-            border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; 
-        }
+        .btn-dia { padding: 8px 15px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; }
         .btn-dia.active { background: #007bff; border-color: #0056b3; }
-
-        /* Estilo do Popup Personalizado */
         .leaflet-popup-content-wrapper { background: #222; color: white; border: 1px solid #444; border-radius: 8px; }
         .leaflet-popup-tip { background: #222; }
         .popup-titulo { font-size: 16px; border-bottom: 1px solid #444; margin-bottom: 10px; padding-bottom: 5px; display: block; color: #fff; }
         .aviso-linha { margin-bottom: 8px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
-        
         .aviso-img { width: 22px; height: 22px; vertical-align: middle; }
-
-        .legenda { 
-            background: rgba(255, 255, 255, 0.95); padding: 10px; color: #333; 
-            border-radius: 8px; font-size: 12px; line-height: 18px; 
-        }
+        .legenda { background: rgba(255, 255, 255, 0.95); padding: 10px; color: #333; border-radius: 8px; font-size: 12px; line-height: 18px; }
         .legenda i { width: 14px; height: 14px; float: left; margin-right: 8px; border-radius: 2px; }
     </style>
 </head>
@@ -60,17 +46,9 @@ const traducaoNivel = { 'green': 'Sem Aviso', 'yellow': 'Amarelo', 'orange': 'La
 const cores = { 'green': '#2ecc71', 'yellow': '#ffff00', 'orange': '#ff9900', 'red': '#ff3333' };
 const pesos = { 'green': 0, 'yellow': 1, 'orange': 2, 'red': 3 };
 
-// Mapeamento para os teus ícones SVG com a primeira letra Maiúscula
 const iconesAviso = {
-    "Precipitação": "Precipitação.svg",
-    "Vento": "Vento.svg",
-    "Agitação Marítima": "Agitação Marítima.svg",
-    "Neve": "Neve.svg",
-    "Trovoada": "Trovoada.svg",
-    "Nevoeiro": "Nevoeiro.svg",
-    "Tempo Quente": "Tempo Quente.svg",
-    "Tempo Frio": "Tempo Frio.svg",
-    "default": "Alerta.svg"
+    "Precipitação": "Chuva.svg", "Vento": "Vento.svg", "Agitação Marítima": "Mar.svg", "Neve": "Neve.svg",
+    "Trovoada": "Trovoada.svg", "Nevoeiro": "Nevoeiro.svg", "Tempo Quente": "Calor.svg", "Tempo Frio": "Frio.svg", "default": "Alerta.svg"
 };
 
 const map = L.map('map', { zoomSnap: 0.1 }).setView([39.6, -8.1], 6.2);
@@ -107,21 +85,19 @@ function renderizar(diaIdx) {
         onEachFeature: function(f, l) {
             const nome = f.properties.Distrito || f.properties.distrito || f.properties.name || "";
             const info = obterInfo(nome, inicio, fim);
-            
             let htmlPopup = `<strong class="popup-titulo">${nome}</strong>`;
             
-            if (info.detalhes.length > 0) {
-                info.detalhes.forEach(d => {
+            if (info.detalhesAtivos.length > 0) {
+                info.detalhesAtivos.forEach(d => {
                     const nomeImg = iconesAviso[d.tipo] || iconesAviso["default"];
                     htmlPopup += `<div class="aviso-linha">
-                        <img src="icons/${nomeImg}" class="aviso-img" alt="${d.tipo}"> 
+                        <img src="icons/${nomeImg}" class="aviso-img"> 
                         <span style="color:${cores[d.nivel] === '#ffff00' ? '#e6e600' : cores[d.nivel]}; font-weight:bold;">${d.tipo}: ${traducaoNivel[d.nivel]}</span>
                     </div>`;
                 });
             } else {
                 htmlPopup += `<div class="aviso-linha">✅ Sem avisos ativos</div>`;
             }
-            
             l.bindPopup(htmlPopup);
         }
     }).addTo(map);
@@ -129,7 +105,7 @@ function renderizar(diaIdx) {
 
 function obterInfo(nomeDistrito, inicio, fim) {
     let max = 'green';
-    let detalhes = [];
+    let mapaTipos = {}; // Para evitar duplicados de tipos de aviso
     const nomeM = normalizar(nomeDistrito);
 
     dadosAvisos.forEach(a => {
@@ -137,16 +113,21 @@ function obterInfo(nomeDistrito, inicio, fim) {
         if (nomeO === nomeM) {
             const aInicio = new Date(a.startTime).getTime();
             const aFim = new Date(a.endTime).getTime();
+            
             if (aInicio <= fim && aFim >= inicio) {
+                // Só adicionamos à lista se NÃO for 'green' (Sem Aviso)
+                if (a.awarenessLevelID !== 'green') {
+                    // Se já existe este tipo de aviso, guardamos apenas o mais grave
+                    if (!mapaTipos[a.awarenessTypeName] || pesos[a.awarenessLevelID] > pesos[mapaTipos[a.awarenessTypeName].nivel]) {
+                        mapaTipos[a.awarenessTypeName] = { tipo: a.awarenessTypeName, nivel: a.awarenessLevelID };
+                    }
+                }
                 if (pesos[a.awarenessLevelID] > pesos[max]) max = a.awarenessLevelID;
-                detalhes.push({
-                    tipo: a.awarenessTypeName,
-                    nivel: a.awarenessLevelID
-                });
             }
         }
     });
-    return { max, detalhes };
+
+    return { max, detalhesAtivos: Object.values(mapaTipos) };
 }
 
 function mudarDia(dia, btn) {
