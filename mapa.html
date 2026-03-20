@@ -3,28 +3,40 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mapa de Alertas IPMA</title>
+    <title>Mapa Alertas IPMA</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #111; color: white; display: flex; flex-direction: column; height: 100vh; }
-        #topbar { background: #222; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #444; flex-shrink: 0; }
-        #map { flex-grow: 1; width: 100%; background: #1a1a1a; }
-        #detalhes { background: #000; height: 150px; overflow-y: auto; padding: 15px; border-top: 1px solid #444; font-size: 13px; flex-shrink: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #111; color: white; overflow: hidden; }
+        #topbar { 
+            background: #222; padding: 12px 20px; display: flex; align-items: center; 
+            justify-content: space-between; border-bottom: 2px solid #444; 
+        }
+        #map { height: calc(100vh - 60px); width: 100%; background: #1a1a1a; }
         
         .grupo-botoes { display: flex; gap: 8px; }
-        .btn-dia { padding: 8px 15px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .btn-dia { 
+            padding: 8px 15px; background: #333; color: white; border: 1px solid #555; 
+            border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; 
+        }
         .btn-dia.active { background: #007bff; border-color: #0056b3; }
 
-        .legenda { background: rgba(255, 255, 255, 0.95); padding: 10px; color: #333; border-radius: 8px; font-size: 12px; line-height: 18px; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        /* Estilo do Popup */
+        .leaflet-popup-content-wrapper { background: #222; color: white; border: 1px solid #444; }
+        .leaflet-popup-tip { background: #222; }
+        .popup-titulo { font-size: 16px; border-bottom: 1px solid #444; margin-bottom: 8px; padding-bottom: 4px; display: block; }
+        .aviso-linha { margin-bottom: 4px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+
+        .legenda { 
+            background: rgba(255, 255, 255, 0.95); padding: 10px; color: #333; 
+            border-radius: 8px; font-size: 12px; line-height: 18px; 
+        }
         .legenda i { width: 14px; height: 14px; float: left; margin-right: 8px; border-radius: 2px; }
-        
-        .aviso-item { margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid #222; }
     </style>
 </head>
 <body>
 
 <div id="topbar">
-    <div style="font-size: 18px; font-weight: bold;">ALERTAS IPMA</div>
+    <div style="font-size: 18px; font-weight: bold; letter-spacing: 1px;">ALERTAS METEO</div>
     <div class="grupo-botoes">
         <button class="btn-dia active" onclick="mudarDia(0, this)">HOJE</button>
         <button class="btn-dia" onclick="mudarDia(1, this)">AMANHÃ</button>
@@ -33,11 +45,6 @@
 </div>
 
 <div id="map"></div>
-
-<div id="detalhes">
-    <b style="color: #aaa; text-transform: uppercase; font-size: 11px;">Detalhes dos Avisos Ativos:</b>
-    <div id="lista-avisos" style="margin-top:10px;">A carregar dados...</div>
-</div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
@@ -50,6 +57,18 @@ const areaInfo = {
 const traducaoNivel = { 'green': 'Sem Aviso', 'yellow': 'Amarelo', 'orange': 'Laranja', 'red': 'Vermelho' };
 const cores = { 'green': '#2ecc71', 'yellow': '#ffff00', 'orange': '#ff9900', 'red': '#ff3333' };
 const pesos = { 'green': 0, 'yellow': 1, 'orange': 2, 'red': 3 };
+
+// Mapeamento de Ícones por tipo de aviso
+const iconesAviso = {
+    "Precipitação": "🌧️",
+    "Vento": "🌬️",
+    "Agitação Marítima": "🌊",
+    "Neve": "❄️",
+    "Trovoada": "⚡",
+    "Nevoeiro": "🌫️",
+    "Ondas de Calor": "🔥",
+    "Frio": "🥶"
+};
 
 const map = L.map('map', { zoomSnap: 0.1 }).setView([39.6, -8.1], 6.2);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
@@ -66,7 +85,7 @@ async function inicializar() {
         const resGeo = await fetch('distritos.geojson');
         geoJsonData = await resGeo.json();
         renderizar(0);
-    } catch (err) { document.getElementById('lista-avisos').innerHTML = "Erro ao carregar dados."; }
+    } catch (err) { console.error("Erro ao carregar dados."); }
 }
 
 function renderizar(diaIdx) {
@@ -76,7 +95,6 @@ function renderizar(diaIdx) {
     const fim = new Date(dataAlvo).setHours(23,59,59,999);
 
     if (window.camada) map.removeLayer(window.camada);
-    let listaHtml = "";
 
     window.camada = L.geoJSON(geoJsonData, {
         style: function(f) {
@@ -86,18 +104,24 @@ function renderizar(diaIdx) {
         onEachFeature: function(f, l) {
             const nome = f.properties.Distrito || f.properties.distrito || f.properties.name || "";
             const info = obterInfo(nome, inicio, fim);
-            l.bindPopup(`<b>${nome}</b><br>Estado: <b style="color:${cores[info.max]}">${traducaoNivel[info.max]}</b>`);
             
-            // Construir a lista de detalhes por baixo
+            let htmlPopup = `<strong class="popup-titulo">${nome}</strong>`;
+            
             if (info.detalhes.length > 0) {
                 info.detalhes.forEach(d => {
-                    listaHtml += `<div class="aviso-item"><b style="color:${cores[d.nivel]}">${nome}:</b> ${d.tipo} (${d.nivelPt})</div>`;
+                    const icone = iconesAviso[d.tipo] || "⚠️";
+                    htmlPopup += `<div class="aviso-linha">
+                        <span>${icone}</span> 
+                        <span style="color:${cores[d.nivel]}; font-weight:bold;">${d.tipo}: ${traducaoNivel[d.nivel]}</span>
+                    </div>`;
                 });
+            } else {
+                htmlPopup += `<div class="aviso-linha">✅ Sem avisos ativos</div>`;
             }
+            
+            l.bindPopup(htmlPopup);
         }
     }).addTo(map);
-
-    document.getElementById('lista-avisos').innerHTML = listaHtml || "Não existem avisos meteorológicos para este dia.";
 }
 
 function obterInfo(nomeDistrito, inicio, fim) {
@@ -114,8 +138,7 @@ function obterInfo(nomeDistrito, inicio, fim) {
                 if (pesos[a.awarenessLevelID] > pesos[max]) max = a.awarenessLevelID;
                 detalhes.push({
                     tipo: a.awarenessTypeName,
-                    nivel: a.awarenessLevelID,
-                    nivelPt: traducaoNivel[a.awarenessLevelID]
+                    nivel: a.awarenessLevelID
                 });
             }
         }
@@ -132,7 +155,7 @@ function mudarDia(dia, btn) {
 const legenda = L.control({position: 'bottomright'});
 legenda.onAdd = () => {
     const div = L.DomUtil.create('div', 'legenda');
-    div.innerHTML = '<b>Risco IPMA</b><br><i style="background:#ff3333"></i>Vermelho<br><i style="background:#ff9900"></i>Laranja<br><i style="background:#ffff00"></i>Amarelo<br><i style="background:#2ecc71"></i>Sem Alerta';
+    div.innerHTML = '<b>Legenda</b><br><i style="background:#ff3333"></i>Vermelho<br><i style="background:#ff9900"></i>Laranja<br><i style="background:#ffff00"></i>Amarelo<br><i style="background:#2ecc71"></i>Sem Aviso';
     return div;
 };
 legenda.addTo(map);
