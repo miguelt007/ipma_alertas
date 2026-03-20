@@ -3,19 +3,17 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mapa de Alertas IPMA</title>
+    <title>Mapa de Alertas IPMA - Portugal</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #111; color: white; overflow: hidden; }
         #topbar { 
             background: #222; 
-            padding: 10px; 
+            padding: 10px 20px; 
             display: flex; 
             align-items: center; 
             justify-content: space-between; 
             border-bottom: 2px solid #444;
-            padding-left: 20px;
-            padding-right: 20px;
         }
         #map { height: calc(100vh - 65px); width: 100%; background: #1a1a1a; }
         
@@ -52,9 +50,9 @@
 <div id="topbar">
     <div style="font-size: 18px; font-weight: bold; color: #eee;">ALERTAS IPMA</div>
     <div class="grupo-botoes">
-        <button class="btn-dia active" onclick="mudarDia(0, this)">HOJE</button>
-        <button class="btn-dia" onclick="mudarDia(1, this)">AMANHÃ</button>
-        <button class="btn-dia" onclick="mudarDia(2, this)">+2 DIAS</button>
+        <button id="btn0" class="btn-dia active" onclick="mudarDia(0, this)">HOJE</button>
+        <button id="btn1" class="btn-dia" onclick="mudarDia(1, this)">AMANHÃ</button>
+        <button id="btn2" class="btn-dia" onclick="mudarDia(2, this)">+2 DIAS</button>
     </div>
 </div>
 
@@ -62,6 +60,7 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
+// Mapeamento IDs IPMA -> Nomes Reais
 const areaInfo = {
     "AVR": "Aveiro", "BJA": "Beja", "BRG": "Braga", "BGC": "Bragança",
     "CBO": "Castelo Branco", "CBR": "Coimbra", "EVR": "Évora", "FAR": "Faro",
@@ -78,9 +77,8 @@ const pesos = { 'red': 3, 'orange': 2, 'yellow': 1, 'green': 0 };
 
 let dadosAvisos = [];
 let geoJsonData = null;
-let diaAtual = 0;
 
-// FUNÇÃO CRÍTICA: Remove acentos e padroniza para comparação
+// Normalização para ignorar acentos e maiúsculas nas comparações
 function normalizar(texto) {
     if (!texto) return "";
     return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
@@ -90,6 +88,7 @@ async function inicializar() {
     try {
         const resAvisos = await fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json');
         dadosAvisos = await resAvisos.json();
+        console.log("Avisos IPMA carregados:", dadosAvisos.length);
 
         const resGeo = await fetch('distritos.geojson');
         geoJsonData = await resGeo.json();
@@ -101,36 +100,48 @@ async function inicializar() {
 }
 
 function renderizar(diaIdx) {
-    diaAtual = diaIdx;
     const dataAlvo = new Date();
     dataAlvo.setDate(dataAlvo.getDate() + parseInt(diaIdx));
-    const dataStr = dataAlvo.toISOString().split('T')[0];
+    
+    // Definir o intervalo do dia selecionado em milissegundos
+    const inicioDia = new Date(dataAlvo).setHours(0, 0, 0, 0);
+    const fimDia = new Date(dataAlvo).setHours(23, 59, 59, 999);
 
     if (window.camada) map.removeLayer(window.camada);
 
     window.camada = L.geoJSON(geoJsonData, {
         style: function(f) {
             const nomeMapa = f.properties.Distrito || f.properties.distrito || f.properties.name || "";
-            const nivel = obterMaxAviso(nomeMapa, dataStr);
+            const nivel = obterMaxAviso(nomeMapa, inicioDia, fimDia);
             return { fillColor: cores[nivel], fillOpacity: 0.7, color: "#222", weight: 1.5 };
         },
         onEachFeature: function(f, l) {
             const nomeMapa = f.properties.Distrito || f.properties.distrito || f.properties.name || "";
-            const nivel = obterMaxAviso(nomeMapa, dataStr);
-            l.bindPopup(`<b>${nomeMapa}</b><br>Estado: <span style="color:${cores[nivel] === '#ffff00' ? '#999000' : cores[nivel]}">${nivel.toUpperCase()}</span>`);
+            const nivel = obterMaxAviso(nomeMapa, inicioDia, fimDia);
+            l.bindPopup(`<b>${nomeMapa}</b><br>Estado: <span style="color:${cores[nivel]}">${nivel.toUpperCase()}</span>`);
         }
     }).addTo(map);
 }
 
-function obterMaxAviso(nomeDistrito, dataStr) {
+function obterMaxAviso(nomeDistrito, inicioDia, fimDia) {
     let max = 'green';
     const nomeMapaNorm = normalizar(nomeDistrito);
 
     dadosAvisos.forEach(aviso => {
         const nomeOficial = areaInfo[aviso.idAreaAviso];
-        if (nomeOficial && normalizar(nomeOficial) === nomeMapaNorm && aviso.startTime.startsWith(dataStr)) {
-            if (pesos[aviso.awarenessLevelID] > pesos[max]) {
-                max = aviso.awarenessLevelID;
+        if (nomeOficial && normalizar(nomeOficial) === nomeMapaNorm) {
+            
+            // Converter datas do IPMA para milissegundos
+            const avisoInicio = new Date(aviso.startTime).getTime();
+            const avisoFim = new Date(aviso.endTime).getTime();
+
+            // Verifica se o aviso está ativo em qualquer momento do dia selecionado
+            const estaNoDia = (avisoInicio <= fimDia && avisoFim >= inicioDia);
+
+            if (estaNoDia) {
+                if (pesos[aviso.awarenessLevelID] > pesos[max]) {
+                    max = aviso.awarenessLevelID;
+                }
             }
         }
     });
