@@ -20,11 +20,14 @@
         }
         .btn-dia.active { background: #007bff; border-color: #0056b3; }
 
-        /* Estilo do Popup */
-        .leaflet-popup-content-wrapper { background: #222; color: white; border: 1px solid #444; }
+        /* Estilo do Popup Personalizado */
+        .leaflet-popup-content-wrapper { background: #222; color: white; border: 1px solid #444; border-radius: 8px; }
         .leaflet-popup-tip { background: #222; }
-        .popup-titulo { font-size: 16px; border-bottom: 1px solid #444; margin-bottom: 8px; padding-bottom: 4px; display: block; }
-        .aviso-linha { margin-bottom: 4px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .popup-titulo { font-size: 16px; border-bottom: 1px solid #444; margin-bottom: 10px; padding-bottom: 5px; display: block; color: #fff; }
+        .aviso-linha { margin-bottom: 8px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
+        
+        /* Classe para os teus ícones SVG */
+        .aviso-img { width: 22px; height: 22px; vertical-align: middle; }
 
         .legenda { 
             background: rgba(255, 255, 255, 0.95); padding: 10px; color: #333; 
@@ -58,16 +61,17 @@ const traducaoNivel = { 'green': 'Sem Aviso', 'yellow': 'Amarelo', 'orange': 'La
 const cores = { 'green': '#2ecc71', 'yellow': '#ffff00', 'orange': '#ff9900', 'red': '#ff3333' };
 const pesos = { 'green': 0, 'yellow': 1, 'orange': 2, 'red': 3 };
 
-// Mapeamento de Ícones por tipo de aviso
+// Mapeamento para os teus ícones SVG na pasta /icons/
 const iconesAviso = {
-    "Precipitação": "🌧️",
-    "Vento": "🌬️",
-    "Agitação Marítima": "🌊",
-    "Neve": "❄️",
-    "Trovoada": "⚡",
-    "Nevoeiro": "🌫️",
-    "Ondas de Calor": "🔥",
-    "Frio": "🥶"
+    "Precipitação": "chuva.svg",
+    "Vento": "vento.svg",
+    "Agitação Marítima": "mar.svg",
+    "Neve": "neve.svg",
+    "Trovoada": "trovoada.svg",
+    "Nevoeiro": "nevoeiro.svg",
+    "Tempo Quente": "calor.svg",
+    "Tempo Frio": "frio.svg",
+    "default": "alerta.svg"
 };
 
 const map = L.map('map', { zoomSnap: 0.1 }).setView([39.6, -8.1], 6.2);
@@ -109,9 +113,9 @@ function renderizar(diaIdx) {
             
             if (info.detalhes.length > 0) {
                 info.detalhes.forEach(d => {
-                    const icone = iconesAviso[d.tipo] || "⚠️";
+                    const nomeImg = iconesAviso[d.tipo] || iconesAviso["default"];
                     htmlPopup += `<div class="aviso-linha">
-                        <span>${icone}</span> 
+                        <img src="icons/${nomeImg}" class="aviso-img" alt="${d.tipo}"> 
                         <span style="color:${cores[d.nivel]}; font-weight:bold;">${d.tipo}: ${traducaoNivel[d.nivel]}</span>
                     </div>`;
                 });
