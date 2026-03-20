@@ -4,45 +4,61 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Avisos IPMA - Portugal Total</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #111; color: white; }
-        #topbar { background: #222; padding: 15px; text-align: center; border-bottom: 2px solid #444; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #111; color: white; overflow-x: hidden; }
+        #topbar { background: #222; padding: 15px; text-align: center; border-bottom: 2px solid #444; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         #map { height: 75vh; width: 100%; background: #1a1a1a; }
-        #debug-log { height: 10vh; overflow-y: scroll; background: #000; color: #0f0; font-family: monospace; font-size: 11px; padding: 10px; border-top: 1px solid #444; }
-        .controles { margin-top: 10px; }
-        button { padding: 6px 10px; cursor: pointer; background: #444; color: white; border: 1px solid #666; border-radius: 4px; }
-        .legenda { background: rgba(255,255,255,0.9); padding: 10px; color: #333; border-radius: 8px; font-size: 12px; }
-        .legenda i { width: 14px; height: 14px; float: left; margin-right: 8px; }
+        #debug-log { height: 10vh; overflow-y: auto; background: #000; color: #0f0; font-family: 'Courier New', monospace; font-size: 11px; padding: 10px; border-top: 1px solid #444; }
+        .controles { margin-top: 12px; }
+        button { padding: 8px 15px; margin: 2px; cursor: pointer; background: #333; color: white; border: 1px solid #555; border-radius: 4px; transition: 0.3s; }
+        button:hover { background: #555; border-color: #888; }
+        select { padding: 7px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; }
+        .legenda { background: rgba(255,255,255,0.95); padding: 12px; color: #333; border-radius: 8px; font-size: 13px; line-height: 20px; box-shadow: 0 0 15px rgba(0,0,0,0.4); }
+        .legenda i { width: 16px; height: 16px; float: left; margin-right: 10px; border-radius: 3px; border: 1px solid #777; }
     </style>
 </head>
 <body>
 
 <div id="topbar">
-    <div style="font-size:18px; font-weight:bold;">ESTADO DOS ALERTAS IPMA</div>
-    <div id="status">A iniciar...</div>
+    <div style="font-size:22px; font-weight:bold; letter-spacing: 1px;">AVISOS METEOROLÓGICOS IPMA</div>
+    <div id="status" style="font-size:13px; color:#aaa; margin-top: 5px;">A carregar sistemas...</div>
+    
     <div class="controles">
-        <select id="selecaoDia" style="padding:5px;">
-            <option value="0">HOJE</option>
-            <option value="1">AMANHÃ</option>
-            <option value="2">DEPOIS DE AMANHÃ</option>
+        <select id="selecaoDia">
+            <option value="0">Previsão para HOJE</option>
+            <option value="1">Previsão para AMANHÃ</option>
+            <option value="2">Depois de AMANHÃ</option>
         </select>
         <button onclick="map.setView([39.5, -8.0], 7)">Continente</button>
         <button onclick="map.setView([38.5, -28.0], 7)">Açores</button>
+        <button onclick="map.setView([32.7, -16.9], 10)">Madeira</button>
     </div>
 </div>
 
 <div id="map"></div>
 <div id="debug-log">Consola de Diagnóstico:</div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const log = (msg) => { document.getElementById('debug-log').innerHTML += `<br>> ${msg}`; };
-const map = L.map('map').setView([39.5, -8.0], 6);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+// --- CONFIGURAÇÃO INICIAL ---
+const log = (msg) => { 
+    const el = document.getElementById('debug-log');
+    el.innerHTML += `<br>> ${msg}`; 
+    el.scrollTop = el.scrollHeight;
+};
 
+const map = L.map('map').setView([39.5, -8.0], 6);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© IPMA | OpenStreetMap'
+}).addTo(map);
+
+// Mapeamento IPMA -> Nomes nos ficheiros GeoJSON (NAME_1)
 const areaInfo = {
-    "AVR":"Aveiro","BJA":"Beja","BRG":"Braga","BGC":"Bragança","CBO":"Castelo Branco","CBR":"Coimbra","EVR":"Évora","FAR":"Faro","GDA":"Guarda","LRA":"Leiria","LSB":"Lisboa","PTG":"Portalegre","PTO":"Porto","STM":"Santarém","STB":"Setúbal","VCT":"Viana do Castelo","VRL":"Vila Real","VIS":"Viseu",
+    "AVR":"Aveiro","BJA":"Beja","BRG":"Braga","BGC":"Bragança","CBO":"Castelo Branco","CBR":"Coimbra",
+    "EVR":"Évora","FAR":"Faro","GDA":"Guarda","LRA":"Leiria","LSB":"Lisboa","PTG":"Portalegre",
+    "PTO":"Porto","STM":"Santarém","STB":"Setúbal","VCT":"Viana do Castelo","VRL":"Vila Real","VIS":"Viseu",
+    // No ficheiro dev-mms, os Açores e Madeira usam o nome em Inglês/Base
     "AOC":"Azores","ACZ":"Azores","ACE":"Azores","ACG":"Azores","AOR":"Azores","ACL":"Azores",
     "MCN":"Madeira","MRM":"Madeira","MCS":"Madeira","MPS":"Madeira"
 };
@@ -53,47 +69,55 @@ const pesos = { 'red': 3, 'orange': 2, 'yellow': 1, 'green': 0 };
 let dadosAvisos = [];
 let todasGeometrias = [];
 
+// --- FUNÇÕES DE CARREGAMENTO ---
+
 async function carregarTudo() {
-    const proxy = "https://api.allorigins.win/raw?url=";
+    // URLs via JSDelivr (CDN estável e sem erros de CORS)
     const urls = [
-        "https://raw.githubusercontent.com/dev-mms/portugal-geojson/master/data/distritos.geojson",
-        "https://raw.githubusercontent.com/dev-mms/portugal-geojson/master/data/acores.geojson",
-        "https://raw.githubusercontent.com/dev-mms/portugal-geojson/master/data/madeira.geojson"
+        "https://cdn.jsdelivr.net/gh/dev-mms/portugal-geojson@master/data/distritos.geojson",
+        "https://cdn.jsdelivr.net/gh/dev-mms/portugal-geojson@master/data/acores.geojson",
+        "https://cdn.jsdelivr.net/gh/dev-mms/portugal-geojson@master/data/madeira.geojson"
     ];
 
     try {
-        log("A carregar avisos do IPMA...");
+        log("A ligar à API do IPMA...");
         const resAvisos = await fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json');
         dadosAvisos = await resAvisos.json();
-        log(`Sucesso: ${dadosAvisos.length} avisos encontrados.`);
+        log(`Sucesso: ${dadosAvisos.length} avisos recebidos.`);
 
         for (const url of urls) {
-            log(`A tentar carregar mapa: ${url.split('/').pop()}...`);
+            log(`A carregar mapa: ${url.split('/').pop()}...`);
             try {
-                // Usamos o proxy para garantir que o ficheiro é lido
-                const res = await fetch(proxy + encodeURIComponent(url));
-                if (!res.ok) throw new Error("Falha no download");
+                const res = await fetch(url);
+                if (!res.ok) throw new Error("HTTP " + res.status);
                 const data = await res.json();
-                todasGeometrias = todasGeometrias.concat(data.features);
-                log(`OK: ${url.split('/').pop()} carregado.`);
+                
+                if (data.features) {
+                    todasGeometrias = todasGeometrias.concat(data.features);
+                    log(`OK: ${data.features.length} polígonos adicionados.`);
+                }
             } catch (e) {
-                log(`ERRO em ${url.split('/').pop()}: ${e.message}`);
+                log(`ERRO ao carregar ficheiro: ${e.message}`);
             }
         }
 
         if (todasGeometrias.length > 0) {
             renderizar(0);
-            document.getElementById("status").innerHTML = "MAPA PRONTO";
+            document.getElementById("status").innerHTML = "SISTEMA OPERACIONAL";
+            log("Mapa renderizado com sucesso.");
         } else {
-            log("ERRO FATAL: Nenhuma geometria carregada.");
+            log("FALHA CRÍTICA: Nenhuma geometria disponível.");
         }
 
         document.getElementById('selecaoDia').onchange = (e) => renderizar(e.target.value);
 
     } catch (err) {
         log("ERRO GLOBAL: " + err.message);
+        document.getElementById("status").innerHTML = "ERRO DE LIGAÇÃO";
     }
 }
+
+// --- FUNÇÕES DE RENDERIZAÇÃO ---
 
 function renderizar(diaIdx) {
     const dataAlvo = new Date();
@@ -104,36 +128,54 @@ function renderizar(diaIdx) {
 
     window.camada = L.geoJSON(todasGeometrias, {
         style: function(f) {
-            const nome = f.properties.NAME_1 || f.properties.name || f.properties.distrito || "";
-            const nivel = obterNivel(nome, dataStr);
-            return { fillColor: cores[nivel], fillOpacity: 0.7, color: "#444", weight: 1.5 };
+            const nomeMapa = f.properties.NAME_1 || f.properties.name || f.properties.distrito || "";
+            const nivel = obterNivel(nomeMapa, dataStr);
+            return { 
+                fillColor: cores[nivel], 
+                fillOpacity: 0.75, 
+                color: "#222", 
+                weight: 1.5 
+            };
         },
         onEachFeature: function(f, l) {
-            const nome = f.properties.NAME_1 || f.properties.name || f.properties.distrito || "";
-            const nivel = obterNivel(nome, dataStr);
-            l.bindPopup(`<b>${nome}</b><br>Alerta: ${nivel.toUpperCase()}`);
+            const nomeMapa = f.properties.NAME_1 || f.properties.name || f.properties.distrito || "";
+            const nivel = obterNivel(nomeMapa, dataStr);
+            l.bindPopup(`
+                <div style="color:#333; font-family:sans-serif;">
+                    <b style="font-size:14px;">${nomeMapa}</b><br>
+                    Estado: <span style="color:${cores[nivel]}; font-weight:bold;">${nivel.toUpperCase()}</span>
+                </div>
+            `);
         }
     }).addTo(map);
 }
 
 function obterNivel(nomeMapa, dataStr) {
     let max = 'green';
-    const norm = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+    const norm = (s) => s ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim() : "";
     const nomeM = norm(nomeMapa);
 
     dadosAvisos.forEach(a => {
-        const nomeI = norm(areaInfo[a.idAreaAviso] || "");
-        if (nomeI === nomeM && a.startTime.startsWith(dataStr)) {
-            if (pesos[a.awarenessLevelID] > pesos[max]) max = a.awarenessLevelID;
+        const nomeOficial = norm(areaInfo[a.idAreaAviso] || "");
+        // Verifica se o nome coincide e se o aviso começa na data selecionada
+        if (nomeOficial === nomeM && a.startTime.startsWith(dataStr)) {
+            if (pesos[a.awarenessLevelID] > pesos[max]) {
+                max = a.awarenessLevelID;
+            }
         }
     });
     return max;
 }
 
+// --- LEGENDA ---
 const legend = L.control({position: 'bottomright'});
 legend.onAdd = () => {
     const div = L.DomUtil.create('div', 'legenda');
-    div.innerHTML = '<b>Avisos</b><br><i style="background:#ff3333"></i>Vermelho<br><i style="background:#ff9900"></i>Laranja<br><i style="background:#ffff00"></i>Amarelo<br><i style="background:#2ecc71"></i>Verde';
+    div.innerHTML = '<b>Avisos IPMA</b><br>' +
+        '<i style="background:#ff3333"></i> Vermelho (Extremo)<br>' +
+        '<i style="background:#ff9900"></i> Laranja (Moderado)<br>' +
+        '<i style="background:#ffff00"></i> Amarelo (Beira)<br>' +
+        '<i style="background:#2ecc71"></i> Verde (Sem Alerta)';
     return div;
 };
 legend.addTo(map);
