@@ -18,20 +18,16 @@
         .btn-dia { padding: 8px 15px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; }
         .btn-dia.active { background: #007bff; border-color: #0056b3; }
         
-        /* Estilo do Popup */
         .leaflet-popup-content-wrapper { background: #222; color: white; border: 1px solid #444; border-radius: 8px; width: 320px; }
-        .leaflet-popup-tip { background: #222; }
         .popup-titulo { font-size: 16px; border-bottom: 1px solid #444; margin-bottom: 10px; padding-bottom: 5px; display: block; color: #fff; font-weight: bold; text-transform: uppercase; }
-        
         .aviso-item { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #444; }
         .aviso-item:last-child { border-bottom: none; }
-        
         .aviso-tipo { font-weight: bold; display: block; font-size: 14px; margin-bottom: 2px; text-transform: uppercase; }
-        .aviso-validade { font-size: 11px; color: #ffcc00; display: block; margin-bottom: 6px; font-family: 'Courier New', monospace; font-weight: bold; }
-        .aviso-desc { font-size: 12px; color: #eee; display: block; line-height: 1.4; }
+        .aviso-validade { font-size: 11px; color: #ffcc00; display: block; margin-bottom: 6px; font-family: monospace; font-weight: bold; }
+        .aviso-desc { font-size: 11px; color: #eee; display: block; line-height: 1.4; }
         
-        .legenda { background: rgba(0, 0, 0, 0.85); padding: 12px; color: #fff; border-radius: 8px; font-size: 12px; border: 1px solid #444; line-height: 20px; }
-        .legenda i { width: 14px; height: 14px; float: left; margin-right: 8px; border-radius: 2px; margin-top: 3px; }
+        .legenda { background: rgba(0, 0, 0, 0.85); padding: 12px; color: #fff; border-radius: 8px; font-size: 12px; border: 1px solid #444; }
+        .legenda i { width: 14px; height: 14px; float: left; margin-right: 8px; border-radius: 2px; }
     </style>
 </head>
 <body>
@@ -43,7 +39,7 @@
             <a href="madeira.html">Madeira</a>
             <a href="acores.html">Açores</a>
         </div>
-        <div style="font-size: 16px; font-weight: bold;">IPMA - ALERTAS</div>
+        <div style="font-size: 16px; font-weight: bold;">IPMA - ALERTAS TEMPO REAL</div>
     </div>
     <div class="grupo-botoes">
         <button class="btn-dia active" onclick="mudarDia(0, this)">HOJE</button>
@@ -65,15 +61,10 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').add
 let dadosAvisos = [];
 let geoJsonData = null;
 
-// Função para formatar a data da API (ISO) para algo legível: "07 Abr, 14:00"
 function formatarDataIPMA(isoStr) {
     const d = new Date(isoStr);
-    const dia = d.getDate().toString().padStart(2, '0');
     const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-    const mes = meses[d.getMonth()];
-    const horas = d.getHours().toString().padStart(2, '0');
-    const mins = d.getMinutes().toString().padStart(2, '0');
-    return `${dia} ${mes}, ${horas}:${mins}`;
+    return `${d.getDate().toString().padStart(2, '0')} ${meses[d.getMonth()]}, ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 }
 
 async function inicializar() {
@@ -87,11 +78,13 @@ async function inicializar() {
 }
 
 function renderizar(diaIdx) {
+    const agora = new Date().getTime();
     const dataAlvo = new Date();
     dataAlvo.setDate(dataAlvo.getDate() + parseInt(diaIdx));
     
-    const tInicio = new Date(dataAlvo).setHours(0,0,0,0);
-    const tFim = new Date(dataAlvo).setHours(23,59,59,999);
+    // Janela temporal do dia selecionado
+    const tInicioDia = new Date(dataAlvo).setHours(0,0,0,0);
+    const tFimDia = new Date(dataAlvo).setHours(23,59,59,999);
 
     if (window.camada) map.removeLayer(window.camada);
 
@@ -104,7 +97,13 @@ function renderizar(diaIdx) {
                 const aInicio = new Date(a.startTime).getTime();
                 const aFim = new Date(a.endTime).getTime();
                 
-                if (a.idAreaAviso === regCode && aInicio <= tFim && aFim >= tInicio) {
+                // CRITÉRIO DE FILTRAGEM:
+                // 1. Deve pertencer ao distrito (RegCode)
+                // 2. O alerta deve estar dentro do dia selecionado
+                // 3. Se for HOJE (diaIdx == 0), o alerta ainda não deve ter terminado (aFim > agora)
+                if (a.idAreaAviso === regCode && aInicio <= tFimDia && aFim >= tInicioDia) {
+                    if (diaIdx === 0 && aFim <= agora) return; // Ignora se já terminou hoje
+
                     if (pesos[a.awarenessLevelID] > pesos[maxNivel]) {
                         maxNivel = a.awarenessLevelID;
                     }
@@ -117,28 +116,29 @@ function renderizar(diaIdx) {
             const regCode = f.properties.RegCode;
             const nomeDistrito = f.properties.Name;
             let html = `<strong class="popup-titulo">${nomeDistrito}</strong>`;
-            let encontrouAviso = false;
+            
+            const avisosAtivos = dadosAvisos.filter(a => {
+                const aInicio = new Date(a.startTime).getTime();
+                const aFim = new Date(a.endTime).getTime();
+                const condicaoDia = (a.idAreaAviso === regCode && aInicio <= tFimDia && aFim >= tInicioDia);
+                if (diaIdx === 0) return condicaoDia && aFim > agora; // Só mostra o que não terminou
+                return condicaoDia;
+            }).sort((a, b) => pesos[b.awarenessLevelID] - pesos[a.awarenessLevelID]);
 
-            // Ordenar avisos por gravidade para mostrar os piores primeiro
-            const avisosFiltrados = dadosAvisos
-                .filter(a => {
-                    const aInicio = new Date(a.startTime).getTime();
-                    const aFim = new Date(a.endTime).getTime();
-                    return a.idAreaAviso === regCode && aInicio <= tFim && aFim >= tInicio && a.awarenessLevelID !== 'green';
-                })
-                .sort((a, b) => pesos[b.awarenessLevelID] - pesos[a.awarenessLevelID]);
+            if (avisosAtivos.length > 0) {
+                avisosAtivos.forEach(a => {
+                    html += `
+                    <div class="aviso-item">
+                        <span class="aviso-tipo" style="color:${cores[a.awarenessLevelID]}">${a.awarenessTypeName}</span>
+                        <span class="aviso-validade">⏱ ${formatarDataIPMA(a.startTime)} até ${formatarDataIPMA(a.endTime)}</span>
+                        <span class="aviso-desc">${a.text}</span>
+                    </div>`;
+                });
+            } else {
+                html += "✅ Sem avisos ativos para o período selecionado.";
+            }
 
-            avisosFiltrados.forEach(a => {
-                encontrouAviso = true;
-                html += `
-                <div class="aviso-item">
-                    <span class="aviso-tipo" style="color:${cores[a.awarenessLevelID]}">${a.awarenessTypeName}</span>
-                    <span class="aviso-validade">⏱ Validade: ${formatarDataIPMA(a.startTime)} até ${formatarDataIPMA(a.endTime)}</span>
-                    <span class="aviso-desc">${a.text}</span>
-                </div>`;
-            });
-
-            l.bindPopup(html + (encontrouAviso ? "" : "✅ Sem avisos ativos para este dia."));
+            l.bindPopup(html);
         }
     }).addTo(map);
 }
