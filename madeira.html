@@ -81,7 +81,8 @@ function formatarData(isoStr) {
 
 async function inicializar() {
     try {
-        const resAvisos = await fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json');
+        // Anti-cache: adicionamos um timestamp à URL
+        const resAvisos = await fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json?t=' + Date.now());
         dadosAvisos = await resAvisos.json();
         const resGeo = await fetch('madeira.geojson');
         geoJsonData = await resGeo.json();
@@ -99,71 +100,72 @@ function renderizar(diaIdx) {
 
     window.camada = L.geoJSON(geoJsonData, {
         style: function(f) {
-            const nomeRegiao = f.properties.Name || f.properties.name || ""; 
-            const info = obterInfoMadeiraSimples(nomeRegiao, inicioDia, fimDia);
-            return { fillColor: cores[info.max], fillOpacity: 0.7, color: "#222", weight: 1.5 };
+            // Tenta ler o nome do GeoJSON para saber se é Porto Santo ou Madeira
+            const n = f.properties.Name || f.properties.name || "";
+            const info = obterInfoSimples(n, inicioDia, fimDia);
+            return { fillColor: cores[info.max], fillOpacity: 0.8, color: "#000", weight: 1.5 };
         },
         onEachFeature: function(f, l) {
-            const nome = f.properties.Name || f.properties.name || "";
-            const info = obterInfoMadeiraSimples(nome, inicioDia, fimDia);
-            let htmlPopup = `<strong class="popup-titulo">${nome}</strong>`;
+            const n = f.properties.Name || f.properties.name || "";
+            const info = obterInfoSimples(n, inicioDia, fimDia);
+            let htmlPopup = `<strong class="popup-titulo">${n}</strong>`;
             
             if (info.detalhesAtivos.length > 0) {
                 info.detalhesAtivos.forEach(d => {
-                    const nomeImg = iconesAviso[d.tipo] || iconesAviso["default"];
-                    const corTexto = d.nivel === 'yellow' ? '#e6e600' : cores[d.nivel];
+                    const icone = iconesAviso[d.tipo] || "Alerta.svg";
                     htmlPopup += `
                     <div class="aviso-item">
                         <div class="aviso-topo">
-                            <img src="icons/${nomeImg}" class="aviso-img"> 
-                            <span style="color:${corTexto}; font-weight:bold;">${d.tipo}: ${traducaoNivel[d.nivel]}</span>
+                            <img src="icons/${icone}" class="aviso-img"> 
+                            <span style="color:${cores[d.nivel] === '#ffff00' ? '#ffd700' : cores[d.nivel]}; font-weight:bold;">${d.tipo}: ${traducaoNivel[d.nivel]}</span>
                         </div>
                         <span class="aviso-tempo">[ ${formatarData(d.inicio)} - ${formatarData(d.fim)} ]</span>
                         <span class="aviso-desc">${d.texto}</span>
                     </div>`;
                 });
             } else {
-                htmlPopup += `<div class="aviso-linha">✅ Sem avisos ativos</div>`;
+                htmlPopup += `<div>✅ Sem avisos para este dia</div>`;
             }
             l.bindPopup(htmlPopup);
         }
     }).addTo(map);
 }
 
-// LÓGICA SIMPLIFICADA: Se é da Madeira, pega na cor mais grave do dia
-function obterInfoMadeiraSimples(nomeRegiaoMapa, inicio, fim) {
+function obterInfoSimples(nomeDoMapa, inicio, fim) {
     let max = 'green';
     let mapaTipos = {}; 
-    const nomeNormalizado = normalizar(nomeRegiaoMapa);
+    const n = normalizar(nomeDoMapa);
 
     dadosAvisos.forEach(a => {
         const aInicio = new Date(a.startTime).getTime();
         const aFim = new Date(a.endTime).getTime();
         
-        // Verifica se o aviso está ativo nas 24h do botão selecionado
+        // 1. Validar se o aviso pertence ao dia clicado
         if (aInicio <= fim && aFim >= inicio) {
             
             let pertence = false;
-            // Porto Santo separado
-            if (a.idAreaAviso === 'MPS' && nomeNormalizado.includes("PORTO SANTO")) pertence = true;
-            // Resto da Madeira (pinta todas as sub-regiões com os avisos da Ilha)
-            if (a.idAreaAviso === 'MAM' && !nomeNormalizado.includes("PORTO SANTO")) pertence = true;
+            // Se o polígono é Porto Santo, só aceita avisos MPS
+            if (n.includes("PORTO SANTO")) {
+                if (a.idAreaAviso === 'MPS') pertence = true;
+            } 
+            // Se o polígono é Madeira (qualquer zona), aceita avisos MAM
+            else {
+                if (a.idAreaAviso === 'MAM') pertence = true;
+            }
 
             if (pertence && a.awarenessLevelID !== 'green') {
                 const nivel = a.awarenessLevelID;
                 const tipo = a.awarenessTypeName;
 
-                // Define a cor do mapa pelo alerta mais grave (incluindo Agitação Marítima)
-                if (pesos[nivel] > pesos[max]) {
-                    max = nivel;
-                }
+                // 2. Cor do mapa: pega no nível mais alto detetado
+                if (pesos[nivel] > pesos[max]) max = nivel;
 
-                // Agrupa para o popup (evita duplicados do mesmo tipo no mesmo dia)
+                // 3. Detalhes para o Popup: guarda o aviso mais grave de cada tipo
                 if (!mapaTipos[tipo] || pesos[nivel] > pesos[mapaTipos[tipo].nivel]) {
                     mapaTipos[tipo] = { 
                         tipo: tipo, nivel: nivel, 
                         inicio: a.startTime, fim: a.endTime, 
-                        texto: a.text || "Descrição disponível no IPMA." 
+                        texto: a.text || "Sem descrição disponível." 
                     };
                 }
             }
