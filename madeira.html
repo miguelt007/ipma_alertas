@@ -99,7 +99,6 @@ function renderizar(diaIdx) {
 
     window.camada = L.geoJSON(geoJsonData, {
         style: function(f) {
-            // No teu GeoJSON o campo de nome é 'Name'
             const nomeRegiao = f.properties.Name; 
             const info = obterInfoMadeira(nomeRegiao, inicioDia, fimDia);
             return { fillColor: cores[info.max], fillOpacity: 0.7, color: "#222", weight: 1.5 };
@@ -134,32 +133,43 @@ function renderizar(diaIdx) {
 function obterInfoMadeira(nomeRegiaoMapa, inicio, fim) {
     let max = 'green';
     let mapaTipos = {}; 
-    const nomeM = normalizar(nomeRegiaoMapa); // Ex: "MADEIRA - COSTA NORTE"
+    const nomeM = normalizar(nomeRegiaoMapa); 
 
     dadosAvisos.forEach(a => {
-        // MAM = Madeira (Ilha), MPS = Porto Santo
         if (a.idAreaAviso === 'MAM' || a.idAreaAviso === 'MPS') {
             const aInicio = new Date(a.startTime).getTime();
             const aFim = new Date(a.endTime).getTime();
             
-            // Verifica se o aviso intersecta o dia selecionado
             if (aInicio <= fim && aFim >= inicio) {
-                
-                // LÓGICA DE FILTRAGEM POR TEXTO
                 const textoAviso = normalizar(a.text || a.awarenessText || "");
-                
-                // Se o nome da região do mapa (Norte/Sul/Montanhas) estiver no texto do aviso
-                // OU se for Porto Santo e o aviso for MPS
-                const pertenceAqui = (textoAviso.includes(nomeM)) || (a.idAreaAviso === 'MPS' && nomeM.includes("PORTO SANTO"));
+                const nivel = a.awarenessLevelID;
+                const tipo = a.awarenessTypeName;
 
-                if (pertenceAqui && a.awarenessLevelID !== 'green') {
-                    const nivel = a.awarenessLevelID;
-                    const tipo = a.awarenessTypeName;
+                let pertenceAqui = false;
 
-                    // Pintar a cor do mapa apenas se NÃO for agitação marítima (para não confundir terra com mar)
-                    // Podes remover este IF se preferires que o mar também pinte a ilha.
+                // Lógica Porto Santo
+                if (a.idAreaAviso === 'MPS' && nomeM.includes("PORTO SANTO")) {
+                    pertenceAqui = true;
+                } 
+                // Lógica Ilha da Madeira (Dividida)
+                else if (a.idAreaAviso === 'MAM' && !nomeM.includes("PORTO SANTO")) {
+                    // Verifica se o texto do IPMA menciona esta zona específica
+                    if (textoAviso.includes(nomeM) || textoAviso.includes("MADEIRA") || textoAviso === "") {
+                        pertenceAqui = true;
+                    }
+                    
+                    // Filtros de exclusão para evitar cores trocadas entre Norte e Sul
+                    if (nomeM.includes("NORTE") && textoAviso.includes("COSTA SUL") && !textoAviso.includes("COSTA NORTE")) pertenceAqui = false;
+                    if (nomeM.includes("SUL") && textoAviso.includes("COSTA NORTE") && !textoAviso.includes("COSTA SUL")) pertenceAqui = false;
+                }
+
+                if (pertenceAqui && nivel !== 'green') {
+                    // Pintar a cor do polígono (Damos prioridade a avisos de TERRA)
                     if (tipo !== "Agitação Marítima") {
                         if (pesos[nivel] > pesos[max]) max = nivel;
+                    } else {
+                        // Se for Mar e o mapa ainda estiver verde, mantemos verde para terra.
+                        // O Mar Laranja aparecerá apenas no Popup para ser fiel ao site do IPMA.
                     }
 
                     const chave = tipo;
