@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>IPMA - Alertas Madeira Detalhado</title>
+    <title>IPMA - Alertas Madeira Oficial</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #111; color: white; overflow: hidden; }
@@ -99,12 +99,12 @@ function renderizar(diaIdx) {
 
     window.camada = L.geoJSON(geoJsonData, {
         style: function(f) {
-            const nomeRegiao = f.properties.Name; 
+            const nomeRegiao = f.properties.Name || f.properties.name || ""; 
             const info = obterInfoMadeira(nomeRegiao, inicioDia, fimDia);
             return { fillColor: cores[info.max], fillOpacity: 0.7, color: "#222", weight: 1.5 };
         },
         onEachFeature: function(f, l) {
-            const nome = f.properties.Name;
+            const nome = f.properties.Name || f.properties.name || "";
             const info = obterInfoMadeira(nome, inicioDia, fimDia);
             let htmlPopup = `<strong class="popup-titulo">${nome}</strong>`;
             
@@ -133,13 +133,17 @@ function renderizar(diaIdx) {
 function obterInfoMadeira(nomeRegiaoMapa, inicio, fim) {
     let max = 'green';
     let mapaTipos = {}; 
-    const nomeM = normalizar(nomeRegiaoMapa); 
+    
+    // Remove "Madeira - " para comparar apenas a zona (ex: "COSTA NORTE")
+    const nomeLimpo = normalizar(nomeRegiaoMapa.replace("Madeira - ", "")); 
 
     dadosAvisos.forEach(a => {
+        // MAM = Madeira, MPS = Porto Santo
         if (a.idAreaAviso === 'MAM' || a.idAreaAviso === 'MPS') {
             const aInicio = new Date(a.startTime).getTime();
             const aFim = new Date(a.endTime).getTime();
             
+            // Filtro de tempo rigoroso
             if (aInicio <= fim && aFim >= inicio) {
                 const textoAviso = normalizar(a.text || a.awarenessText || "");
                 const nivel = a.awarenessLevelID;
@@ -148,36 +152,35 @@ function obterInfoMadeira(nomeRegiaoMapa, inicio, fim) {
                 let pertenceAqui = false;
 
                 // Lógica Porto Santo
-                if (a.idAreaAviso === 'MPS' && nomeM.includes("PORTO SANTO")) {
+                if (a.idAreaAviso === 'MPS' && (nomeLimpo.includes("PORTO SANTO") || nomeRegiaoMapa.includes("Porto Santo"))) {
                     pertenceAqui = true;
                 } 
-                // Lógica Ilha da Madeira (Dividida)
-                else if (a.idAreaAviso === 'MAM' && !nomeM.includes("PORTO SANTO")) {
-                    // Verifica se o texto do IPMA menciona esta zona específica
-                    if (textoAviso.includes(nomeM) || textoAviso.includes("MADEIRA") || textoAviso === "") {
+                // Lógica Zonas da Madeira
+                else if (a.idAreaAviso === 'MAM') {
+                    // Se o texto menciona a zona específica ou a ilha em geral
+                    if (textoAviso.includes(nomeLimpo) || textoAviso.includes("MADEIRA") || textoAviso === "") {
                         pertenceAqui = true;
                     }
                     
-                    // Filtros de exclusão para evitar cores trocadas entre Norte e Sul
-                    if (nomeM.includes("NORTE") && textoAviso.includes("COSTA SUL") && !textoAviso.includes("COSTA NORTE")) pertenceAqui = false;
-                    if (nomeM.includes("SUL") && textoAviso.includes("COSTA NORTE") && !textoAviso.includes("COSTA SUL")) pertenceAqui = false;
+                    // Exclusões mútuas: se o aviso diz "Costa Norte", não pinta a "Costa Sul"
+                    if (nomeLimpo.includes("NORTE") && textoAviso.includes("COSTA SUL") && !textoAviso.includes("COSTA NORTE")) pertenceAqui = false;
+                    if (nomeLimpo.includes("SUL") && textoAviso.includes("COSTA NORTE") && !textoAviso.includes("COSTA SUL")) pertenceAqui = false;
+                    if (nomeLimpo.includes("MONTANHOSAS") && textoAviso.includes("COSTA") && !textoAviso.includes("MONTANHOSAS")) pertenceAqui = false;
                 }
 
                 if (pertenceAqui && nivel !== 'green') {
-                    // Pintar a cor do polígono (Damos prioridade a avisos de TERRA)
-                    if (tipo !== "Agitação Marítima") {
-                        if (pesos[nivel] > pesos[max]) max = nivel;
-                    } else {
-                        // Se for Mar e o mapa ainda estiver verde, mantemos verde para terra.
-                        // O Mar Laranja aparecerá apenas no Popup para ser fiel ao site do IPMA.
+                    // Atualiza a cor máxima do polígono
+                    if (pesos[nivel] > pesos[max]) {
+                        max = nivel;
                     }
 
+                    // Guarda os detalhes para o popup
                     const chave = tipo;
                     if (!mapaTipos[chave] || pesos[nivel] > pesos[mapaTipos[chave].nivel]) {
                         mapaTipos[chave] = { 
                             tipo: tipo, nivel: nivel, 
                             inicio: a.startTime, fim: a.endTime, 
-                            texto: a.text || "Descrição não disponível." 
+                            texto: a.text || "Descrição no popup." 
                         };
                     }
                 }
