@@ -3,23 +3,35 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>IPMA - Alertas Continente</title>
+    <title>IPMA - Alertas Meteorológicos</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #111; color: white; overflow: hidden; }
         #topbar { background: #222; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #444; }
         #map { height: calc(100vh - 60px); width: 100%; background: #1a1a1a; }
+        
+        /* Menu de Navegação */
         .nav-regioes { display: flex; gap: 15px; border-right: 1px solid #444; padding-right: 20px; }
         .nav-regioes a { color: #888; text-decoration: none; font-size: 13px; font-weight: bold; text-transform: uppercase; }
         .nav-regioes a.active { color: #fff; border-bottom: 2px solid #007bff; }
+
         .grupo-botoes { display: flex; gap: 8px; }
-        .btn-dia { padding: 8px 15px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-dia { padding: 8px 15px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s; }
         .btn-dia.active { background: #007bff; border-color: #0056b3; }
-        .leaflet-popup-content-wrapper { background: #222; color: white; border-radius: 8px; width: 320px; border: 1px solid #444; }
-        .popup-titulo { font-size: 15px; border-bottom: 1px solid #444; margin-bottom: 8px; display: block; color: #007bff; font-weight: bold; }
-        .aviso-item { margin-bottom: 10px; border-bottom: 1px dashed #444; padding-bottom: 5px; }
-        .aviso-tempo { font-size: 11px; color: #ffcc00; display: block; font-family: monospace; }
-        .aviso-desc { font-size: 11px; color: #ccc; display: block; line-height: 1.4; margin-top: 4px; }
+        
+        /* Estilo do Popup */
+        .leaflet-popup-content-wrapper { background: #222; color: white; border: 1px solid #444; border-radius: 8px; width: 310px; }
+        .leaflet-popup-tip { background: #222; }
+        .popup-titulo { font-size: 16px; border-bottom: 1px solid #444; margin-bottom: 10px; padding-bottom: 5px; display: block; color: #fff; font-weight: bold; }
+        .aviso-item { margin-bottom: 12px; border-bottom: 1px dashed #444; padding-bottom: 8px; }
+        .aviso-item:last-child { border-bottom: none; }
+        .aviso-topo { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+        .aviso-img { width: 24px; height: 24px; }
+        .aviso-tempo { font-size: 11px; color: #aaa; display: block; margin-left: 34px; font-family: monospace; }
+        .aviso-desc { font-size: 12px; color: #eee; display: block; margin-top: 6px; margin-left: 34px; line-height: 1.4; }
+        
+        .legenda { background: rgba(255, 255, 255, 0.95); padding: 10px; color: #333; border-radius: 8px; font-size: 12px; line-height: 18px; }
+        .legenda i { width: 14px; height: 14px; float: left; margin-right: 8px; border-radius: 2px; }
     </style>
 </head>
 <body>
@@ -31,12 +43,12 @@
             <a href="madeira.html">Madeira</a>
             <a href="acores.html">Açores</a>
         </div>
-        <span style="font-weight: bold;">IPMA - PORTUGAL</span>
+        <div style="font-size: 16px; font-weight: bold; letter-spacing: 1px;">IPMA - CONTINENTE</div>
     </div>
     <div class="grupo-botoes">
-        <button id="btn0" class="btn-dia active" onclick="mudarDia(0)">HOJE</button>
-        <button id="btn1" class="btn-dia" onclick="mudarDia(1)">AMANHÃ</button>
-        <button id="btn2" class="btn-dia" onclick="mudarDia(2)">+2 DIAS</button>
+        <button class="btn-dia active" onclick="mudarDia(0, this)">HOJE</button>
+        <button class="btn-dia" onclick="mudarDia(1, this)">AMANHÃ</button>
+        <button class="btn-dia" onclick="mudarDia(2, this)">+2 DIAS</button>
     </div>
 </div>
 
@@ -44,27 +56,26 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
+const traducaoNivel = { 'green': 'Sem Aviso', 'yellow': 'Amarelo', 'orange': 'Laranja', 'red': 'Vermelho' };
 const cores = { 'green': '#2ecc71', 'yellow': '#ffff00', 'orange': '#ff9900', 'red': '#ff3333' };
 const pesos = { 'green': 0, 'yellow': 1, 'orange': 2, 'red': 3 };
 
-// Mapeamento infalível: Nome do Distrito no GeoJSON -> RegCode da API
-const distritosIdMap = {
-    "AVEIRO": "AVR", "BEJA": "BJA", "BRAGA": "BRG", "BRAGANCA": "BGC", 
-    "CASTELO BRANCO": "CBO", "COIMBRA": "CBR", "EVORA": "EVR", "FARO": "FAR", 
-    "GUARDA": "GDA", "LEIRIA": "LRA", "LISBOA": "LSB", "PORTALEGRE": "PTG", 
-    "PORTO": "PTO", "SANTAREM": "STM", "SETUBAL": "STB", 
-    "VIANA DO CASTELO": "VCT", "VILA REAL": "VRL", "VISEU": "VIS"
+const iconesAviso = {
+    "Precipitação": "Precipitação.svg", "Vento": "Vento.svg", "Agitação Marítima": "Agitação Marítima.svg", "Neve": "Neve.svg",
+    "Trovoada": "Trovoada.svg", "Nevoeiro": "Nevoeiro.svg", "Tempo Quente": "Tempo Quente.svg", "Tempo Frio": "Tempo Frio.svg", "default": "Alerta.svg"
 };
 
-const map = L.map('map').setView([39.6, -8.1], 6.5);
+const map = L.map('map', { zoomSnap: 0.1 }).setView([39.6, -8.1], 6.5);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
 let dadosAvisos = [];
 let geoJsonData = null;
-let diaAtualIdx = 0;
 
-function normalizar(t) { 
-    return t ? t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim() : ""; 
+function formatarData(isoStr) {
+    if (!isoStr) return "";
+    const d = new Date(isoStr);
+    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    return `${d.getDate().toString().padStart(2, '0')} ${meses[d.getMonth()]} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 }
 
 async function inicializar() {
@@ -73,64 +84,83 @@ async function inicializar() {
         dadosAvisos = await resAvisos.json();
         const resGeo = await fetch('distritos.geojson');
         geoJsonData = await resGeo.json();
-        renderizar();
+        renderizar(0);
     } catch (err) { console.error("Erro ao carregar dados."); }
 }
 
-function mudarDia(idx) {
-    diaAtualIdx = idx;
-    document.querySelectorAll('.btn-dia').forEach((b, i) => b.classList.toggle('active', i === idx));
-    renderizar();
-}
-
-function renderizar() {
-    if (window.camada) map.removeLayer(window.camada);
-
+function renderizar(diaIdx) {
     const dataAlvo = new Date();
-    dataAlvo.setDate(dataAlvo.getDate() + diaAtualIdx);
-    const tInicio = new Date(dataAlvo).setHours(0,0,0,0);
-    const tFim = new Date(dataAlvo).setHours(23,59,59,999);
+    dataAlvo.setDate(dataAlvo.getDate() + parseInt(diaIdx));
+    const inicio = new Date(dataAlvo).setHours(0,0,0,0);
+    const fim = new Date(dataAlvo).setHours(23,59,59,999);
+
+    if (window.camada) map.removeLayer(window.camada);
 
     window.camada = L.geoJSON(geoJsonData, {
         style: function(f) {
-            const nomeDistrito = f.properties.Distrito || f.properties.distrito || f.properties.name || "";
-            const regCode = distritosIdMap[normalizar(nomeDistrito)];
-            let maxPeso = 0;
+            // USANDO O REGCODE DIRETAMENTE DO TEU GEOJSON
+            const codigoDistrito = f.properties.RegCode; 
+            let maxNivel = 'green';
 
             dadosAvisos.forEach(a => {
-                const aStart = new Date(a.startTime).getTime();
-                const aEnd = new Date(a.endTime).getTime();
-                // Verificação dupla: pelo idAreaAviso direto (RegCode)
-                if (a.idAreaAviso === regCode && aStart <= tFim && aEnd >= tInicio) {
-                    if (pesos[a.awarenessLevelID] > maxPeso) maxPeso = pesos[a.awarenessLevelID];
+                const aInicio = new Date(a.startTime).getTime();
+                const aFim = new Date(a.endTime).getTime();
+                if (a.idAreaAviso === codigoDistrito && aInicio <= fim && aFim >= inicio) {
+                    if (pesos[a.awarenessLevelID] > pesos[maxNivel]) maxNivel = a.awarenessLevelID;
                 }
             });
 
-            const cor = Object.keys(pesos).find(k => pesos[k] === maxPeso) || 'green';
-            return { fillColor: cores[cor], fillOpacity: 0.7, color: "#000", weight: 1 };
+            return { fillColor: cores[maxNivel], fillOpacity: 0.7, color: "#222", weight: 1.5 };
         },
         onEachFeature: function(f, l) {
-            const nomeDistrito = f.properties.Distrito || f.properties.distrito || f.properties.name || "";
-            const regCode = distritosIdMap[normalizar(nomeDistrito)];
-            let html = `<strong class="popup-titulo">${nomeDistrito}</strong>`;
-            let avisosCount = 0;
+            const codigoDistrito = f.properties.RegCode;
+            const nomeExibicao = f.properties.Name;
+            let htmlPopup = `<strong class="popup-titulo">${nomeExibicao}</strong>`;
+            let avisosAtivos = [];
 
             dadosAvisos.forEach(a => {
-                const aStart = new Date(a.startTime).getTime();
-                const aEnd = new Date(a.endTime).getTime();
-                if (a.idAreaAviso === regCode && aStart <= tFim && aEnd >= tInicio && a.awarenessLevelID !== 'green') {
-                    avisosCount++;
-                    html += `<div class="aviso-item">
-                        <b style="color:${cores[a.awarenessLevelID]}">${a.awarenessTypeName}</b>
-                        <span class="aviso-tempo">${a.startTime.split('T')[1].substring(0,5)} - ${a.endTime.split('T')[1].substring(0,5)}</span>
-                        <span class="aviso-desc">${a.text}</span>
-                    </div>`;
+                const aInicio = new Date(a.startTime).getTime();
+                const aFim = new Date(a.endTime).getTime();
+                if (a.idAreaAviso === codigoDistrito && aInicio <= fim && aFim >= inicio && a.awarenessLevelID !== 'green') {
+                    avisosAtivos.push(a);
                 }
             });
-            l.bindPopup(html + (avisosCount === 0 ? "✅ Sem avisos ativos" : ""));
+
+            if (avisosAtivos.length > 0) {
+                avisosAtivos.forEach(d => {
+                    const nomeImg = iconesAviso[d.awarenessTypeName] || iconesAviso["default"];
+                    const corTexto = d.awarenessLevelID === 'yellow' ? '#e6e600' : cores[d.awarenessLevelID];
+                    htmlPopup += `
+                    <div class="aviso-item">
+                        <div class="aviso-topo">
+                            <img src="icons/${nomeImg}" class="aviso-img"> 
+                            <span style="color:${corTexto}; font-weight:bold;">${d.awarenessTypeName}</span>
+                        </div>
+                        <span class="aviso-tempo">[ ${formatarData(d.startTime)} - ${formatarData(d.endTime)} ]</span>
+                        <span class="aviso-desc">${d.text || "Sem descrição disponível."}</span>
+                    </div>`;
+                });
+            } else {
+                htmlPopup += `<div class="aviso-linha">✅ Sem avisos ativos</div>`;
+            }
+            l.bindPopup(htmlPopup);
         }
     }).addTo(map);
 }
+
+function mudarDia(dia, btn) {
+    document.querySelectorAll('.btn-dia').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderizar(dia);
+}
+
+const legenda = L.control({position: 'bottomright'});
+legenda.onAdd = () => {
+    const div = L.DomUtil.create('div', 'legenda');
+    div.innerHTML = '<b>Legenda</b><br><i style="background:#ff3333"></i>Vermelho<br><i style="background:#ff9900"></i>Laranja<br><i style="background:#ffff00"></i>Amarelo<br><i style="background:#2ecc71"></i>Sem Aviso';
+    return div;
+};
+legenda.addTo(map);
 
 inicializar();
 </script>
