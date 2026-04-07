@@ -15,9 +15,10 @@
         .grupo-botoes { display: flex; gap: 8px; }
         .btn-dia { padding: 8px 15px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-dia.active { background: #007bff; border-color: #0056b3; }
+        
         .leaflet-popup-content-wrapper { background: #222; color: white; border-radius: 8px; width: 330px; border: 1px solid #444; }
         .popup-titulo { font-size: 15px; border-bottom: 1px solid #444; margin-bottom: 8px; display: block; color: #007bff; font-weight: bold; }
-        .aviso-item { margin-bottom: 12px; border-bottom: 1px dashed #333; padding-bottom: 8px; }
+        .aviso-item { margin-bottom: 12px; border-bottom: 1px dashed #444; padding-bottom: 8px; }
         .aviso-topo { display: flex; align-items: center; gap: 8px; }
         .aviso-img { width: 22px; height: 22px; }
         .aviso-tempo { font-size: 11px; color: #ffcc00; display: block; margin: 4px 0 0 30px; font-family: monospace; font-weight: bold; }
@@ -58,10 +59,15 @@ let diaAtualIdx = 0;
 
 function normalizar(t) { return t ? t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase() : ""; }
 
-function formatarData(dataMs) {
+// NOVA FUNÇÃO DE FORMATAÇÃO DE DATA (EX: 08 Abr 14:00)
+function formatarDataCompleta(dataMs) {
     const d = new Date(dataMs);
     const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-    return `${d.getDate().toString().padStart(2, '0')} ${meses[d.getMonth()]} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    const dia = d.getDate().toString().padStart(2, '0');
+    const mes = meses[d.getMonth()];
+    const hora = d.getHours().toString().padStart(2, '0');
+    const min = d.getMinutes().toString().padStart(2, '0');
+    return `${dia} ${mes} ${hora}:${min}`;
 }
 
 async function inicializar() {
@@ -109,17 +115,14 @@ function obterCorPorRegiao(nomeMapa, tInicio, tFim) {
         const aEnd = new Date(a.endTime).getTime();
 
         if (aStart <= tFim && aEnd >= tInicio) {
-            const areaIPMA = a.idAreaAviso;
+            const id = a.idAreaAviso;
             let pertence = false;
 
-            // MAPEAMENTO REAL DE IDS DO IPMA PARA AS TUAS ZONAS
-            if (nM.includes("PORTO SANTO") && areaIPMA === "MPS") pertence = true;
-            if (nM.includes("COSTA NORTE") && areaIPMA === "MCN") pertence = true;
-            if (nM.includes("COSTA SUL") && areaIPMA === "MCS") pertence = true;
-            if (nM.includes("MONTANHOSAS") && areaIPMA === "MAM") pertence = true;
-
-            // Backup: Se for um aviso geral "Madeira" (MAM) e for terra, pinta as 3 zonas
-            if (areaIPMA === "MAM" && !nM.includes("PORTO SANTO")) pertence = true;
+            // MAPEAMENTO COM OS IDS QUE ME DESTE
+            if (nM.includes("PORTO SANTO") && id === "MPS") pertence = true;
+            if (nM.includes("COSTA NORTE") && id === "MCN") pertence = true;
+            if (nM.includes("COSTA SUL") && id === "MCS") pertence = true;
+            if (nM.includes("MONTANHOSAS") && (id === "MRM" || id === "MAM")) pertence = true;
 
             if (pertence && pesos[a.awarenessLevelID] > maxPeso) {
                 maxPeso = pesos[a.awarenessLevelID];
@@ -139,33 +142,30 @@ function gerarPopup(nomeMapa, tInicio, tFim) {
         const aEnd = new Date(a.endTime).getTime();
 
         if (aStart <= tFim && aEnd >= tInicio) {
-            const areaIPMA = a.idAreaAviso;
+            const id = a.idAreaAviso;
             let pertence = false;
 
-            if (nM.includes("PORTO SANTO") && areaIPMA === "MPS") pertence = true;
-            if (nM.includes("COSTA NORTE") && areaIPMA === "MCN") pertence = true;
-            if (nM.includes("COSTA SUL") && areaIPMA === "MCS") pertence = true;
-            if (nM.includes("MONTANHOSAS") && areaIPMA === "MAM") pertence = true;
-            if (areaIPMA === "MAM" && !nM.includes("PORTO SANTO")) pertence = true;
+            if (nM.includes("PORTO SANTO") && id === "MPS") pertence = true;
+            if (nM.includes("COSTA NORTE") && id === "MCN") pertence = true;
+            if (nM.includes("COSTA SUL") && id === "MCS") pertence = true;
+            if (nM.includes("MONTANHOSAS") && (id === "MRM" || id === "MAM")) pertence = true;
 
             if (pertence && a.awarenessLevelID !== 'green') {
-                const dIn = Math.max(aStart, tInicio);
-                const dOut = Math.min(aEnd, tFim);
-
+                // Aqui garantimos que a data mostrada no popup é a do aviso real
                 avisosHtml += `
                 <div class="aviso-item">
                     <div class="aviso-topo">
                         <img src="icons/${a.awarenessTypeName}.svg" onerror="this.src='icons/Alerta.svg'" class="aviso-img">
                         <span style="color:${cores[a.awarenessLevelID]}; font-weight:bold;">${a.awarenessTypeName}</span>
                     </div>
-                    <span class="aviso-tempo">Das ${new Date(dIn).getHours()}h às ${new Date(dOut).getHours()}h</span>
+                    <span class="aviso-tempo">${formatarDataCompleta(a.startTime)} até ${formatarDataCompleta(a.endTime)}</span>
                     <span class="aviso-desc">${a.text}</span>
                 </div>`;
             }
         }
     });
 
-    return html + (avisosHtml || "<div>✅ Sem avisos ativos para este dia.</div>");
+    return html + (avisosHtml || "<div>✅ Sem avisos ativos.</div>");
 }
 
 inicializar();
