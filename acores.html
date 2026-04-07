@@ -10,7 +10,6 @@
         #topbar { background: #222; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #444; }
         #map { height: calc(100vh - 60px); width: 100%; background: #1a1a1a; }
         
-        /* Menu de Navegação entre Regiões */
         .nav-regioes { display: flex; gap: 15px; margin-right: 20px; border-right: 1px solid #444; padding-right: 20px; }
         .nav-regioes a { color: #888; text-decoration: none; font-size: 13px; font-weight: bold; text-transform: uppercase; }
         .nav-regioes a.active { color: #fff; border-bottom: 2px solid #007bff; }
@@ -19,7 +18,6 @@
         .btn-dia { padding: 8px 15px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s; }
         .btn-dia.active { background: #007bff; border-color: #0056b3; }
         
-        /* Estilo do Popup */
         .leaflet-popup-content-wrapper { background: #222; color: white; border: 1px solid #444; border-radius: 8px; width: 310px; }
         .leaflet-popup-tip { background: #222; }
         .popup-titulo { font-size: 16px; border-bottom: 1px solid #444; margin-bottom: 10px; padding-bottom: 5px; display: block; color: #fff; font-weight: bold; }
@@ -56,13 +54,6 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-// IDs específicos do IPMA para os Grupos dos Açores
-const areaInfo = {
-    "AOC": "Grupo Ocidental", 
-    "ACN": "Grupo Central", 
-    "AOR": "Grupo Oriental"
-};
-
 const traducaoNivel = { 'green': 'Sem Aviso', 'yellow': 'Amarelo', 'orange': 'Laranja', 'red': 'Vermelho' };
 const cores = { 'green': '#2ecc71', 'yellow': '#ffff00', 'orange': '#ff9900', 'red': '#ff3333' };
 const pesos = { 'green': 0, 'yellow': 1, 'orange': 2, 'red': 3 };
@@ -72,14 +63,11 @@ const iconesAviso = {
     "Trovoada": "Trovoada.svg", "Nevoeiro": "Nevoeiro.svg", "Tempo Quente": "Tempo Quente.svg", "Tempo Frio": "Tempo Frio.svg", "default": "Alerta.svg"
 };
 
-// Foco centralizado nos Açores com zoom 7
 const map = L.map('map', { zoomSnap: 0.1 }).setView([38.5, -28.2], 7);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
 
 let dadosAvisos = [];
 let geoJsonData = null;
-
-function normalizar(t) { return t ? t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim() : ""; }
 
 function formatarData(isoStr) {
     if (!isoStr) return "";
@@ -92,7 +80,7 @@ async function inicializar() {
     try {
         const resAvisos = await fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json');
         dadosAvisos = await resAvisos.json();
-        const resGeo = await fetch('acores.geojson'); // Ficheiro GeoJSON dos Açores
+        const resGeo = await fetch('acores.geojson');
         geoJsonData = await resGeo.json();
         renderizar(0);
     } catch (err) { console.error("Erro ao carregar dados."); }
@@ -108,15 +96,17 @@ function renderizar(diaIdx) {
 
     window.camada = L.geoJSON(geoJsonData, {
         style: function(f) {
-            // Verifica propriedades comuns de nome nos GeoJSON
-            const nomeRegiao = f.properties.Distrito || f.properties.distrito || f.properties.name || f.properties.regiao;
-            const nivel = obterInfo(nomeRegiao, inicio, fim).max;
-            return { fillColor: cores[nivel], fillOpacity: 0.7, color: "#222", weight: 1.5 };
+            // No GeoJSON do IPMA para os Açores, usamos o campo 'RegCode'
+            const idArea = f.properties.RegCode; 
+            const info = obterInfoAcores(idArea, inicio, fim);
+            return { fillColor: cores[info.max], fillOpacity: 0.7, color: "#222", weight: 1.5 };
         },
         onEachFeature: function(f, l) {
-            const nome = f.properties.Distrito || f.properties.distrito || f.properties.name || f.properties.regiao || "";
-            const info = obterInfo(nome, inicio, fim);
-            let htmlPopup = `<strong class="popup-titulo">${nome}</strong>`;
+            const idArea = f.properties.RegCode;
+            const nomeGrupo = f.properties.Name;
+            const info = obterInfoAcores(idArea, inicio, fim);
+            
+            let htmlPopup = `<strong class="popup-titulo">${nomeGrupo}</strong>`;
             
             if (info.detalhesAtivos.length > 0) {
                 info.detalhesAtivos.forEach(d => {
@@ -141,21 +131,20 @@ function renderizar(diaIdx) {
     }).addTo(map);
 }
 
-function obterInfo(nomeDistrito, inicio, fim) {
+function obterInfoAcores(idArea, inicio, fim) {
     let max = 'green';
     let mapaTipos = {}; 
-    const nomeM = normalizar(nomeDistrito);
 
     dadosAvisos.forEach(a => {
-        const nomeO = normalizar(areaInfo[a.idAreaAviso]);
-        if (nomeO === nomeM) {
+        // Comparação direta com os códigos de área (AOC, ACN, AOR)
+        if (a.idAreaAviso === idArea) {
             const aInicio = new Date(a.startTime).getTime();
             const aFim = new Date(a.endTime).getTime();
             
             if (aInicio <= fim && aFim >= inicio) {
                 if (a.awarenessLevelID !== 'green') {
                     const chave = a.awarenessTypeName;
-                    const textoDesc = a.text || a.awarenessText || a.awarenessTextMT || a.description || "Descrição detalhada não disponível.";
+                    const textoDesc = a.text || a.awarenessText || a.awarenessTextMT || a.description || "Descrição não disponível.";
 
                     if (!mapaTipos[chave] || pesos[a.awarenessLevelID] > pesos[mapaTipos[chave].nivel]) {
                         mapaTipos[chave] = { 
