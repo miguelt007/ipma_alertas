@@ -10,6 +10,7 @@
         #topbar { background: #222; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #444; }
         #map { height: calc(100vh - 60px); width: 100%; background: #1a1a1a; }
         
+        /* Menu Regiões */
         .nav-regioes { display: flex; gap: 15px; margin-right: 20px; border-right: 1px solid #444; padding-right: 20px; }
         .nav-regioes a { color: #888; text-decoration: none; font-size: 13px; font-weight: bold; text-transform: uppercase; }
         .nav-regioes a.active { color: #fff; border-bottom: 2px solid #007bff; }
@@ -18,6 +19,7 @@
         .btn-dia { padding: 8px 15px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s; }
         .btn-dia.active { background: #007bff; border-color: #0056b3; }
         
+        /* Popups */
         .leaflet-popup-content-wrapper { background: #222; color: white; border: 1px solid #444; border-radius: 8px; width: 310px; }
         .leaflet-popup-tip { background: #222; }
         .popup-titulo { font-size: 16px; border-bottom: 1px solid #444; margin-bottom: 10px; padding-bottom: 5px; display: block; color: #fff; font-weight: bold; }
@@ -94,7 +96,7 @@ function renderizar(diaIdx) {
     const dataAlvo = new Date();
     dataAlvo.setDate(dataAlvo.getDate() + parseInt(diaIdx));
     
-    // Define o intervalo exato das 24 horas do dia selecionado
+    // Intervalo exato do dia (00:00:00 a 23:59:59)
     const inicioDia = new Date(dataAlvo).setHours(0,0,0,0);
     const fimDia = new Date(dataAlvo).setHours(23,59,59,999);
 
@@ -126,14 +128,14 @@ function renderizar(diaIdx) {
                     </div>`;
                 });
             } else {
-                htmlPopup += `<div class="aviso-linha">✅ Sem avisos ativos para este dia</div>`;
+                htmlPopup += `<div class="aviso-linha">✅ Sem avisos ativos</div>`;
             }
             l.bindPopup(htmlPopup);
         }
     }).addTo(map);
 }
 
-function obterInfoRigorosa(nomeDistrito, inicio, fim) {
+function obterInfoRigorosa(nomeDistrito, inicioDia, fimDia) {
     let max = 'green';
     let mapaTipos = {}; 
     const nomeM = normalizar(nomeDistrito);
@@ -144,21 +146,25 @@ function obterInfoRigorosa(nomeDistrito, inicio, fim) {
             const aInicio = new Date(a.startTime).getTime();
             const aFim = new Date(a.endTime).getTime();
             
-            // O aviso tem de ter intersecção com o intervalo do dia selecionado
-            if (aInicio < fim && aFim > inicio) {
-                if (a.awarenessLevelID !== 'green') {
+            // CONDIÇÃO DE INTERSECÇÃO: O aviso tem de estar "vivo" dentro deste dia
+            if (aInicio <= fimDia && aFim >= inicioDia) {
+                const nivel = a.awarenessLevelID;
+                
+                if (nivel !== 'green') {
                     const chave = a.awarenessTypeName;
-                    const textoDesc = a.text || a.awarenessText || "Descrição não disponível.";
+                    const textoDesc = a.text || "Descrição não disponível.";
 
-                    if (!mapaTipos[chave] || pesos[a.awarenessLevelID] > pesos[mapaTipos[chave].nivel]) {
+                    // Atualiza cor do mapa se for mais grave
+                    if (pesos[nivel] > pesos[max]) max = nivel;
+
+                    // Agrupa avisos para o popup
+                    if (!mapaTipos[chave] || pesos[nivel] > pesos[mapaTipos[chave].nivel]) {
                         mapaTipos[chave] = { 
-                            tipo: a.awarenessTypeName, nivel: a.awarenessLevelID, 
+                            tipo: a.awarenessTypeName, nivel: nivel, 
                             inicio: a.startTime, fim: a.endTime, texto: textoDesc 
                         };
                     }
                 }
-                // Atualiza a cor máxima se o aviso for mais grave que o anterior encontrado
-                if (pesos[a.awarenessLevelID] > pesos[max]) max = a.awarenessLevelID;
             }
         }
     });
