@@ -13,9 +13,8 @@
         .nav-regioes a { color: #888; text-decoration: none; font-size: 13px; font-weight: bold; text-transform: uppercase; }
         .nav-regioes a.active { color: #fff; border-bottom: 2px solid #007bff; }
         .grupo-botoes { display: flex; gap: 8px; }
-        .btn-dia { padding: 8px 15px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-dia { padding: 8px 15px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-dia.active { background: #007bff; border-color: #0056b3; }
-        
         .leaflet-popup-content-wrapper { background: #222; color: white; border-radius: 8px; width: 330px; border: 1px solid #444; }
         .popup-titulo { font-size: 15px; border-bottom: 1px solid #444; margin-bottom: 8px; display: block; color: #007bff; font-weight: bold; }
         .aviso-item { margin-bottom: 12px; border-bottom: 1px dashed #333; padding-bottom: 8px; }
@@ -67,7 +66,7 @@ function formatarData(dataMs) {
 
 async function inicializar() {
     try {
-        const resAvisos = await fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json?nocache=' + Date.now());
+        const resAvisos = await fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json?t=' + Date.now());
         dadosAvisos = await resAvisos.json();
         const resGeo = await fetch('madeira.geojson');
         geoJsonData = await resGeo.json();
@@ -109,19 +108,18 @@ function obterCorPorRegiao(nomeMapa, tInicio, tFim) {
         const aStart = new Date(a.startTime).getTime();
         const aEnd = new Date(a.endTime).getTime();
 
-        // Filtro de tempo: o aviso tem de intersetar as 24h do dia selecionado
         if (aStart <= tFim && aEnd >= tInicio) {
-            const areaIPMA = a.idAreaAviso; // MAM ou MPS
+            const areaIPMA = a.idAreaAviso;
             let pertence = false;
 
-            // Se o polígono no mapa é Porto Santo, só olha para avisos MPS
-            if (nM.includes("PORTO SANTO")) {
-                if (areaIPMA === "MPS") pertence = true;
-            } 
-            // Se o polígono é qualquer um da Madeira (Norte, Sul, Montanhas), olha para MAM
-            else {
-                if (areaIPMA === "MAM") pertence = true;
-            }
+            // MAPEAMENTO REAL DE IDS DO IPMA PARA AS TUAS ZONAS
+            if (nM.includes("PORTO SANTO") && areaIPMA === "MPS") pertence = true;
+            if (nM.includes("COSTA NORTE") && areaIPMA === "MCN") pertence = true;
+            if (nM.includes("COSTA SUL") && areaIPMA === "MCS") pertence = true;
+            if (nM.includes("MONTANHOSAS") && areaIPMA === "MAM") pertence = true;
+
+            // Backup: Se for um aviso geral "Madeira" (MAM) e for terra, pinta as 3 zonas
+            if (areaIPMA === "MAM" && !nM.includes("PORTO SANTO")) pertence = true;
 
             if (pertence && pesos[a.awarenessLevelID] > maxPeso) {
                 maxPeso = pesos[a.awarenessLevelID];
@@ -145,10 +143,12 @@ function gerarPopup(nomeMapa, tInicio, tFim) {
             let pertence = false;
 
             if (nM.includes("PORTO SANTO") && areaIPMA === "MPS") pertence = true;
-            if (!nM.includes("PORTO SANTO") && areaIPMA === "MAM") pertence = true;
+            if (nM.includes("COSTA NORTE") && areaIPMA === "MCN") pertence = true;
+            if (nM.includes("COSTA SUL") && areaIPMA === "MCS") pertence = true;
+            if (nM.includes("MONTANHOSAS") && areaIPMA === "MAM") pertence = true;
+            if (areaIPMA === "MAM" && !nM.includes("PORTO SANTO")) pertence = true;
 
             if (pertence && a.awarenessLevelID !== 'green') {
-                // Ajustamos o tempo para mostrar apenas o intervalo dentro do dia selecionado
                 const dIn = Math.max(aStart, tInicio);
                 const dOut = Math.min(aEnd, tFim);
 
@@ -158,7 +158,7 @@ function gerarPopup(nomeMapa, tInicio, tFim) {
                         <img src="icons/${a.awarenessTypeName}.svg" onerror="this.src='icons/Alerta.svg'" class="aviso-img">
                         <span style="color:${cores[a.awarenessLevelID]}; font-weight:bold;">${a.awarenessTypeName}</span>
                     </div>
-                    <span class="aviso-tempo">Válido: ${formatarData(dIn)} até ${formatarData(dOut)}</span>
+                    <span class="aviso-tempo">Das ${new Date(dIn).getHours()}h às ${new Date(dOut).getHours()}h</span>
                     <span class="aviso-desc">${a.text}</span>
                 </div>`;
             }
