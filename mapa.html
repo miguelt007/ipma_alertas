@@ -138,6 +138,11 @@ function mudarDia(dia, btn) {
 }
 
 inicializar();
+    // Atualiza os dados automaticamente a cada 5 minutos sem recarregar a página
+setInterval(() => {
+    inicializar();
+    console.log("Mapa atualizado automaticamente às " + new Date().toLocaleTimeString());
+}, 300000);
 </script>
 </body>
 </html>
