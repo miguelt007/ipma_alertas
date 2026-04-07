@@ -3,39 +3,37 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>IPMA - Madeira Oficial</title>
+    <title>IPMA - Madeira Detalhado</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #111; color: white; overflow: hidden; }
         #topbar { background: #222; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #444; }
         #map { height: calc(100vh - 60px); width: 100%; background: #1a1a1a; }
-        .nav-regioes { display: flex; gap: 15px; margin-right: 20px; border-right: 1px solid #444; padding-right: 20px; }
+        .nav-regioes { display: flex; gap: 15px; border-right: 1px solid #444; padding-right: 20px; }
         .nav-regioes a { color: #888; text-decoration: none; font-size: 13px; font-weight: bold; text-transform: uppercase; }
         .nav-regioes a.active { color: #fff; border-bottom: 2px solid #007bff; }
         .grupo-botoes { display: flex; gap: 8px; }
-        .btn-dia { padding: 8px 15px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; }
+        .btn-dia { padding: 8px 15px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .btn-dia.active { background: #007bff; border-color: #0056b3; }
-        .leaflet-popup-content-wrapper { background: #222; color: white; border-radius: 8px; width: 320px; }
-        .popup-titulo { font-size: 16px; border-bottom: 1px solid #444; margin-bottom: 10px; display: block; font-weight: bold; }
-        .aviso-item { margin-bottom: 12px; border-bottom: 1px dashed #444; padding-bottom: 8px; }
-        .aviso-topo { display: flex; align-items: center; gap: 10px; }
-        .aviso-img { width: 24px; height: 24px; }
-        .aviso-tempo { font-size: 11px; color: #ffa500; display: block; margin-left: 34px; font-weight: bold; }
-        .aviso-desc { font-size: 12px; color: #eee; display: block; margin-top: 5px; margin-left: 34px; }
-        .legenda { background: rgba(255, 255, 255, 0.9); padding: 10px; color: #333; border-radius: 8px; font-size: 12px; }
-        .legenda i { width: 14px; height: 14px; float: left; margin-right: 8px; }
+        .leaflet-popup-content-wrapper { background: #222; color: white; border-radius: 8px; width: 330px; }
+        .popup-titulo { font-size: 15px; border-bottom: 1px solid #444; margin-bottom: 8px; display: block; color: #007bff; }
+        .aviso-item { margin-bottom: 10px; border-bottom: 1px dashed #333; padding-bottom: 8px; }
+        .aviso-topo { display: flex; align-items: center; gap: 8px; }
+        .aviso-img { width: 22px; height: 22px; }
+        .aviso-tempo { font-size: 11px; color: #ffcc00; display: block; margin: 4px 0 0 30px; font-family: monospace; }
+        .aviso-desc { font-size: 11px; color: #ccc; display: block; margin-left: 30px; line-height: 1.3; }
     </style>
 </head>
 <body>
 
 <div id="topbar">
-    <div style="display: flex; align-items: center;">
+    <div style="display: flex; align-items: center; gap: 20px;">
         <div class="nav-regioes">
             <a href="mapa.html">Continente</a>
             <a href="madeira.html" class="active">Madeira</a>
             <a href="acores.html">Açores</a>
         </div>
-        <div style="font-size: 16px; font-weight: bold;">IPMA - MADEIRA</div>
+        <span style="font-weight: bold; letter-spacing: 1px;">MADEIRA ALERTA</span>
     </div>
     <div class="grupo-botoes">
         <button id="btn0" class="btn-dia active" onclick="mudarDia(0)">HOJE</button>
@@ -58,9 +56,16 @@ let dadosAvisos = [];
 let geoJsonData = null;
 let diaAtualIdx = 0;
 
+function normalizar(t) { return t ? t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase() : ""; }
+
+function formatarData(dataObj) {
+    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    return `${dataObj.getDate().toString().padStart(2, '0')} ${meses[dataObj.getMonth()]} ${dataObj.getHours().toString().padStart(2, '0')}:${dataObj.getMinutes().toString().padStart(2, '0')}`;
+}
+
 async function inicializar() {
     try {
-        const resAvisos = await fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json?nocache=' + Date.now());
+        const resAvisos = await fetch('https://api.ipma.pt/open-data/forecast/warnings/warnings_www.json?t=' + Date.now());
         dadosAvisos = await resAvisos.json();
         const resGeo = await fetch('madeira.geojson');
         geoJsonData = await resGeo.json();
@@ -79,77 +84,87 @@ function renderizar() {
 
     const dataAlvo = new Date();
     dataAlvo.setDate(dataAlvo.getDate() + diaAtualIdx);
-    const tInicio = new Date(dataAlvo).setHours(0,0,0,0);
-    const tFim = new Date(dataAlvo).setHours(23,59,59,999);
+    const tInicioDia = new Date(dataAlvo).setHours(0,0,0,0);
+    const tFimDia = new Date(dataAlvo).setHours(23,59,59,999);
 
     window.camada = L.geoJSON(geoJsonData, {
         style: function(f) {
-            const n = (f.properties.Name || f.properties.name || "").toUpperCase();
-            const cor = obterCorDia(n, tInicio, tFim);
-            return { fillColor: cor, fillOpacity: 0.8, color: "#000", weight: 1.5 };
+            const nomeGeo = f.properties.Name; // Ex: "Madeira - Costa Norte"
+            const cor = obterCorPorRegiao(nomeGeo, tInicioDia, tFimDia);
+            return { fillColor: cor, fillOpacity: 0.7, color: "#000", weight: 1.5 };
         },
         onEachFeature: function(f, l) {
-            const n = f.properties.Name || f.properties.name || "";
-            l.bindPopup(gerarPopup(n, tInicio, tFim));
+            l.bindPopup(gerarPopup(f.properties.Name, tInicioDia, tFimDia));
         }
     }).addTo(map);
 }
 
-function obterCorDia(nome, tInicio, tFim) {
+function obterCorPorRegiao(nomeMapa, tInicio, tFim) {
     let maxPeso = 0;
-    let corFinal = cores.green;
-    const isPortoSanto = nome.includes("PORTO SANTO");
+    const nomeM = normalizar(nomeMapa); // Ex: "MADEIRA - COSTA NORTE"
 
     dadosAvisos.forEach(a => {
         const aStart = new Date(a.startTime).getTime();
         const aEnd = new Date(a.endTime).getTime();
-        
-        // SÓ ENTRA SE O AVISO ESTIVER ATIVO NAS 24H DESTE DIA
+
         if (aStart <= tFim && aEnd >= tInicio) {
-            const area = a.idAreaAviso;
-            if ((isPortoSanto && area === 'MPS') || (!isPortoSanto && area === 'MAM')) {
-                if (pesos[a.awarenessLevelID] > maxPeso) {
-                    maxPeso = pesos[a.awarenessLevelID];
-                    corFinal = cores[a.awarenessLevelID];
-                }
+            const textoIPMA = normalizar(a.text || "");
+            const areaIPMA = a.idAreaAviso; // MAM ou MPS
+
+            let pertence = false;
+            if (nomeM.includes("PORTO SANTO") && areaIPMA === "MPS") pertence = true;
+            if (!nomeM.includes("PORTO SANTO") && areaIPMA === "MAM") {
+                // Se o polígono é "Costa Norte" e o texto do IPMA diz "COSTA NORTE", etc.
+                const subZona = nomeM.replace("MADEIRA - ", "");
+                if (textoIPMA.includes(subZona) || textoIPMA.includes("MADEIRA")) pertence = true;
+            }
+
+            if (pertence && pesos[a.awarenessLevelID] > maxPeso) {
+                maxPeso = pesos[a.awarenessLevelID];
             }
         }
     });
-    return corFinal;
+    return maxPeso > 0 ? cores[Object.keys(pesos).find(k => pesos[k] === maxPeso)] : cores.green;
 }
 
-function gerarPopup(nome, tInicio, tFim) {
-    let html = `<strong class="popup-titulo">${nome}</strong>`;
-    let encontrou = false;
-    const isPortoSanto = nome.toUpperCase().includes("PORTO SANTO");
+function gerarPopup(nomeMapa, tInicio, tFim) {
+    let html = `<strong class="popup-titulo">${nomeMapa}</strong>`;
+    let avisosHtml = "";
+    const nomeM = normalizar(nomeMapa);
 
     dadosAvisos.forEach(a => {
         const aStart = new Date(a.startTime).getTime();
         const aEnd = new Date(a.endTime).getTime();
 
         if (aStart <= tFim && aEnd >= tInicio) {
-            const area = a.idAreaAviso;
-            if ((isPortoSanto && area === 'MPS') || (!isPortoSanto && area === 'MAM')) {
-                if (a.awarenessLevelID !== 'green') {
-                    encontrou = true;
-                    // FORMATAÇÃO DA DATA PARA O DIA ESPECÍFICO
-                    const dIn = new Date(Math.max(aStart, tInicio));
-                    const dOut = new Date(Math.min(aEnd, tFim));
-                    
-                    html += `
-                    <div class="aviso-item">
-                        <div class="aviso-topo">
-                            <img src="icons/${a.awarenessTypeName}.svg" onerror="this.src='icons/Alerta.svg'" class="aviso-img">
-                            <span style="color:${cores[a.awarenessLevelID]}; font-weight:bold;">${a.awarenessTypeName}</span>
-                        </div>
-                        <span class="aviso-tempo">Válido para este dia: ${dIn.getHours()}:00h até ${dOut.getHours()}:00h</span>
-                        <span class="aviso-desc">${a.text}</span>
-                    </div>`;
-                }
+            const textoIPMA = normalizar(a.text || "");
+            const areaIPMA = a.idAreaAviso;
+
+            let pertence = false;
+            if (nomeM.includes("PORTO SANTO") && areaIPMA === "MPS") pertence = true;
+            if (!nomeM.includes("PORTO SANTO") && areaIPMA === "MAM") {
+                const subZona = nomeM.replace("MADEIRA - ", "");
+                if (textoIPMA.includes(subZona) || textoIPMA.includes("MADEIRA")) pertence = true;
+            }
+
+            if (pertence && a.awarenessLevelID !== 'green') {
+                const dIn = new Date(Math.max(aStart, tInicio));
+                const dOut = new Date(Math.min(aEnd, tFim));
+
+                avisosHtml += `
+                <div class="aviso-item">
+                    <div class="aviso-topo">
+                        <img src="icons/${a.awarenessTypeName}.svg" onerror="this.src='icons/Alerta.svg'" class="aviso-img">
+                        <span style="color:${cores[a.awarenessLevelID]}; font-weight:bold;">${a.awarenessTypeName}</span>
+                    </div>
+                    <span class="aviso-tempo">${formatarData(dIn)} até ${formatarData(dOut)}</span>
+                    <span class="aviso-desc">${a.text}</span>
+                </div>`;
             }
         }
     });
-    return encontrou ? html : html + "<div>✅ Sem avisos ativos para este dia.</div>";
+
+    return html + (avisosHtml || "<div>✅ Sem avisos ativos.</div>");
 }
 
 inicializar();
